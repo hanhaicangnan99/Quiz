@@ -17,7 +17,7 @@
   var KEY_LAST = "lastBank";
   var KEY_IMPORTED = "importedBanks";
   var GROUP_IMPORTED = "导入题库";
-  var APP_VERSION = "1.7";
+  var APP_VERSION = "1.8";
 
   var TYPE_ORDER = ["单选题", "多选题", "判断题", "填空题", "简答题", "计算题", "论述题"];
 
@@ -231,6 +231,7 @@
     clearMarkBtn: E("clearMarkBtn"),
     drawerBtn: E("drawerBtn"), drawerCloseBtn: E("drawerCloseBtn"), drawerBackdrop: E("drawerBackdrop"),
     modeToggleBtn: E("modeToggleBtn"), layoutStatus: E("layoutStatus"),
+    answerToggleBtn: E("answerToggleBtn"),
     scoreBox: E("scoreBox"), content: E("content"),
     submitBtn: E("submitBtn"), submitBtnMobile: E("submitBtnMobile"),
     paperSummaryMobile: E("paperSummaryMobile"),
@@ -648,7 +649,7 @@
         ? '<button type="button" class="unmark-btn" data-mark-qid="' + escA(q.id) + '">取消标记</button>'
         : "";
       var optsHtml = listOptionsHtml(q, showAns);
-      var answerPart;
+      var answerPart = "";
       if (showAns) {
         // 有选项的题：正确答案已由绿色选项表示，这里只放解析（有的话）
         // 无选项的主观题（简答/计算）：没有可标绿的选项，仍需用文字给出正确答案
@@ -656,9 +657,6 @@
         if (!optsHtml.length) lines.push("正确答案：" + esc(q.answer));
         if (q.explanation) lines.push("解析：" + esc(q.explanation));
         answerPart = lines.length ? '<div class="result show answer">' + lines.join("<br>") + "</div>" : "";
-      } else {
-        answerPart = '<div class="list-hint">答案已隐藏　' +
-          '<button type="button" class="link-btn" data-action="toggle-answers">点这里显示</button></div>';
       }
       return '<article class="question' + (isMarked(q) ? " marked" : "") + '" data-id="' + escA(q.id) + '">' +
         qHeadHtml(q, (idx + 1) + ". " + esc(q.question)) +
@@ -808,9 +806,19 @@
   function toggleAns() {
     state.showAnswers = els.showAnswerToggle.checked;
     saveSettings();
+    updateAnswerToggleBtn();
     if (state.mode === "quiz" && state.paper.length) renderPaper();
     else if (state.mode === "wrong") renderWrongList();
     else if (state.mode === "marked") renderMarkedList();
+  }
+
+  /* 抽屉形态下浮动的「显示答案 / 隐藏答案」按钮（在「☰ 侧栏」上方） */
+  function updateAnswerToggleBtn() {
+    if (!els.answerToggleBtn) return;
+    var on = !!els.showAnswerToggle.checked;
+    els.answerToggleBtn.textContent = on ? "隐藏答案" : "显示答案";
+    els.answerToggleBtn.classList.toggle("on", on);
+    els.answerToggleBtn.title = on ? "当前已显示答案，点击隐藏" : "点击在题目上标出正确答案";
   }
 
   function switchTab(t) {
@@ -927,6 +935,7 @@
       r.checked = (r.value === orderName);
     });
     els.showAnswerToggle.checked = !!state.showAnswers;
+    updateAnswerToggleBtn();
   }
 
   function activate(id, opts) {
@@ -1149,6 +1158,12 @@
     els.addRuleBtn.addEventListener("click", addQuizRule);
     els.startQuizBtn.addEventListener("click", startQuiz);
     els.showAnswerToggle.addEventListener("change", toggleAns);
+    if (els.answerToggleBtn) {
+      els.answerToggleBtn.addEventListener("click", function () {
+        els.showAnswerToggle.checked = !els.showAnswerToggle.checked;
+        toggleAns();
+      });
+    }
     els.scopeChoices.addEventListener("change", function () {
       renderTypeChoices();
       saveSettings();
@@ -1195,19 +1210,10 @@
     els.content.addEventListener("change", capAnswer);
     els.content.addEventListener("input", capAnswer);
 
-    /* 题卡上的「☆ 标记 / ★ 已标记 / 取消标记」按钮、列表里的「点这里显示」答案按钮（事件委托） */
+    /* 题卡上的「☆ 标记 / ★ 已标记 / 取消标记」按钮（事件委托） */
     els.content.addEventListener("click", function (e) {
       var target = e.target;
       if (!target || !target.closest) return;
-
-      var ansBtn = target.closest('[data-action="toggle-answers"]');
-      if (ansBtn) {
-        e.preventDefault();
-        els.showAnswerToggle.checked = true;
-        toggleAns();
-        return;
-      }
-
       var btn = target.closest("[data-mark-qid]");
       if (!btn) return;
       e.preventDefault();

@@ -1,4 +1,4 @@
-﻿/* 真实浏览器回归测试：在 Chrome 里加载 index.html（注入临时探针），
+/* 真实浏览器回归测试：在 Chrome 里加载 index.html（注入临时探针），
    用「计算后的样式」验证那些 DOM 桩测不出来的东西：
    - 抽屉按钮点开后侧栏是否真的滑出来了（transform）、遮罩是否真的出现
    - 抽屉/并排两种形态下 aside 的定位、题目是否满屏
@@ -77,10 +77,32 @@ window.addEventListener("load", function () {
     log.push("closedFlag=" + root().classList.contains("drawer-open"));
     log.push("closedTx=" + Math.round(asideEl.getBoundingClientRect().left));
 
+    // 浮动「显示答案」按钮：应在「☰ 侧栏」上方、互不重叠，且能开/关答案
+    var ansBtn = q("answerToggleBtn");
+    var drawerBtnEl = q("drawerBtn");
+    var ansRect = ansBtn.getBoundingClientRect();
+    var drawRect = drawerBtnEl.getBoundingClientRect();
+    log.push("ansBtnDisplay=" + cs(ansBtn, "display"));
+    log.push("ansBtnAbove=" + (ansRect.bottom <= drawRect.top + 1 ? "yes" : "no"));
+    log.push("ansBtnLabel=" + ansBtn.textContent);
+    ansBtn.style.transition = "none";     // 跳过 0.15s 颜色过渡，直接读最终色
+    ansBtn.click();
+    log.push("ansBtnLabelAfter=" + ansBtn.textContent);
+    log.push("ansBtnOnAfter=" + ansBtn.classList.contains("on"));
+    log.push("ansBtnOnBg=" + cs(ansBtn, "background-color"));
+    ansBtn.click();
+    log.push("ansBtnLabelBack=" + ansBtn.textContent);
+
     // 出题 → 标记 / 提交 / 错题库标绿
     root().classList.add("drawer-open");   // 让侧栏（含开始出题按钮）可点
     q("startQuizBtn").click();
     log.push("paper=" + document.querySelectorAll("#content article.question").length);
+
+    // 有题目之后再验证浮动按钮真的能把答案标绿 / 取消标绿
+    ansBtn.click();
+    log.push("greenAfterToggle=" + (document.querySelectorAll("#content .option.correct-highlight").length > 0));
+    ansBtn.click();
+    log.push("greenAfterToggleOff=" + (document.querySelectorAll("#content .option.correct-highlight").length > 0));
     var markBtn = document.querySelector("#content [data-mark-qid]");
     markBtn.click();
     log.push("markBtnText=" + markBtn.textContent);
@@ -160,6 +182,16 @@ if (narrow[0] === "NO-TITLE") {
   check(value(narrow, "openBackdrop") !== "none", "★ 遮罩出现了（背景变暗）", value(narrow, "openBackdrop"));
   check(value(narrow, "closedFlag") === "false", "点遮罩可收起", value(narrow, "closedFlag"));
   check(Number(value(narrow, "closedTx")) < -50, "收起后侧栏又回到屏幕外", `left=${value(narrow, "closedTx")}`);
+  check(value(narrow, "ansBtnDisplay") !== "none", "浮动「显示答案」按钮可见", value(narrow, "ansBtnDisplay"));
+  check(value(narrow, "ansBtnAbove") === "yes", "★ 显示答案按钮在「☰ 侧栏」上方且不重叠");
+  check(value(narrow, "ansBtnLabel") === "显示答案", "浮动按钮默认是「显示答案」", value(narrow, "ansBtnLabel"));
+  check(value(narrow, "ansBtnLabelAfter") === "隐藏答案", "点一下变成「隐藏答案」", value(narrow, "ansBtnLabelAfter"));
+  check(value(narrow, "ansBtnOnAfter") === "true", "浮动按钮带 on 高亮", value(narrow, "ansBtnOnAfter"));
+  check(value(narrow, "ansBtnOnBg").replace(/\s/g, "") === "rgb(20,108,148)",
+    "★ 高亮时底色是主题蓝（不是被过渡卡住的白色）", value(narrow, "ansBtnOnBg"));
+  check(value(narrow, "greenAfterToggle") === "true", "★ 浮动按钮点了题目正确选项真的标绿", value(narrow, "greenAfterToggle"));
+  check(value(narrow, "greenAfterToggleOff") === "false", "再点一下绿色消失", value(narrow, "greenAfterToggleOff"));
+  check(value(narrow, "ansBtnLabelBack") === "显示答案", "按钮文案切回「显示答案」", value(narrow, "ansBtnLabelBack"));
   check(Number(value(narrow, "paperW")) > Number(value(narrow, "asideW")) * 2,
     "题目区宽度不受侧栏挤压", `paper=${value(narrow, "paperW")} aside=${value(narrow, "asideW")}`);
 
@@ -170,7 +202,7 @@ if (narrow[0] === "NO-TITLE") {
   check(Number(value(narrow, "navMarked")) === 1, "题号导航出现 ★", value(narrow, "navMarked"));
   check(/标记题（1）/.test(value(narrow, "tabText")), "标记题页签计数更新", value(narrow, "tabText"));
   check(Number(value(narrow, "navWidth")) > 100, "抽屉里题目导航可见且有宽度", value(narrow, "navWidth"));
-  check(/^v1\.7/.test(value(narrow, "statusLine")), "状态行显示 v1.7", value(narrow, "statusLine"));
+  check(/^v1\.8/.test(value(narrow, "statusLine")), "状态行显示 v1.8", value(narrow, "statusLine"));
   check(!/PROBE-ERROR/.test(narrow.join("|")), "探针无异常", narrow.filter((l) => /ERROR/.test(l)).join(" "));
 }
 

@@ -475,22 +475,26 @@ function main() {
   let listHtml = el6("content").innerHTML;
   check(!/correct-highlight/.test(listHtml), "默认不显示答案：选项无绿色标记");
   check(!/正确答案：/.test(listHtml), "默认不显示答案：无正确答案文本");
-  check(/list-hint/.test(listHtml) && /data-action="toggle-answers"/.test(listHtml), "默认显示「点这里显示」提示");
+  check(!/list-hint|点这里显示/.test(listHtml), "★ 隐藏时不再出现任何提示条");
   check(/答案已隐藏/.test(el6("paperSummary").textContent), "摘要标明答案已隐藏", el6("paperSummary").textContent);
 
-  clickShowAnsBtn();
-  check(el6("showAnswerToggle").checked === true, "点提示里的按钮即打开显示答案");
+  // 抽屉形态下浮动的「显示答案」按钮
+  check(el6("answerToggleBtn").textContent === "显示答案", "浮动按钮默认是「显示答案」", el6("answerToggleBtn").textContent);
+  el6("answerToggleBtn").dispatch("click");
+  check(el6("showAnswerToggle").checked === true, "★ 浮动按钮可打开显示答案");
+  check(el6("answerToggleBtn").textContent === "隐藏答案", "按钮文案变为「隐藏答案」", el6("answerToggleBtn").textContent);
+  check(el6("answerToggleBtn").classList.contains("on"), "浮动按钮带上 on 高亮");
   listHtml = el6("content").innerHTML;
   check(/correct-highlight/.test(listHtml), "显示答案后正确选项标绿");
   check(!/正确答案：/.test(listHtml), "★ 选择题不再出现「正确答案：X」文字栏（由绿色选项表示）");
   check(!/result show answer/.test(listHtml), "★ 无解析时不显示多余的文字栏");
 
-  el6("showAnswerToggle").checked = false;
-  el6("showAnswerToggle").dispatch("change");
+  el6("answerToggleBtn").dispatch("click");
+  check(el6("showAnswerToggle").checked === false, "再点浮动按钮可隐藏答案");
+  check(el6("answerToggleBtn").textContent === "显示答案", "按钮文案切回「显示答案」");
   listHtml = el6("content").innerHTML;
-  check(!/correct-highlight/.test(listHtml), "侧栏开关可以再隐藏答案");
+  check(!/correct-highlight/.test(listHtml), "浮动按钮可再隐藏答案");
   check(!/正确答案：/.test(listHtml), "隐藏时不残留答案文本");
-  check(/答案已隐藏/.test(listHtml), "隐藏时给出提示条");
 
   // 标记题列表同样受该开关控制
   el6("showAnswerToggle").checked = true;
@@ -558,7 +562,7 @@ function main() {
   check(dom6.win.YXA_LAYOUT.pref() === "drawer", "再点切回抽屉", dom6.win.YXA_LAYOUT.pref());
   check(root.classList.contains("drawer-mode"), "切回后 html 上是抽屉形态");
   check(/切换为并排显示/.test(el6("modeToggleBtn").textContent), "按钮文案随模式变化", el6("modeToggleBtn").textContent);
-  check(/^v1\.7/.test(el6("layoutStatus").textContent), "状态行带版本号 v1.7", el6("layoutStatus").textContent);
+  check(/^v1\.8/.test(el6("layoutStatus").textContent), "状态行带版本号 v1.8", el6("layoutStatus").textContent);
 
   console.log("");
   if (failures.length) {

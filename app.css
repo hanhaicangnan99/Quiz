@@ -409,36 +409,13 @@
     }
     .unmark-btn:hover { background: #fff3dd; border-color: var(--warn); }
 
-    /* 错题库 / 标记题：答案隐藏时的提示条与内联「显示答案」链接按钮 */
-    .list-hint {
-      margin-top: 12px;
-      padding: 10px 12px;
-      border: 1px dashed var(--line);
-      border-radius: 8px;
-      background: #fbfcfe;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.6;
-    }
-    .link-btn {
-      min-height: 0;
-      padding: 0;
-      margin: 0 2px;
-      background: none;
-      border: 0;
-      border-radius: 0;
-      color: var(--accent);
-      font-size: 13px;
-      font-weight: 700;
-      text-decoration: underline;
-      cursor: pointer;
-    }
-    .link-btn:hover { background: none; color: var(--accent-strong); }
+    /* 错题库 / 标记题：答案隐藏时不再有任何提示条，答案显示由侧栏开关
+       或抽屉形态下浮动的「显示答案」按钮控制 */
 
     /* ===== 侧栏两种形态：抽屉（浮层，题目满屏）/ 并排 =====
        形态由 layout.js 打在 <html> 上的 drawer-mode / side-mode 类决定，
        并可被用户在侧栏底部手动切换（记住选择），不再只靠媒体查询判断宽度。 */
-    .drawer-btn, .drawer-close, .drawer-backdrop { display: none; }
+    .drawer-btn, .drawer-close, .drawer-backdrop, .answer-toggle-btn { display: none; }
 
     /* 并排形态：窄屏时侧栏跟着变窄，尽量少挤占题目 */
     html.side-mode .app { grid-template-columns: min(320px, 40vw) minmax(0, 1fr); }
@@ -490,6 +467,31 @@
       font-weight: 700;
       box-shadow: 0 10px 22px rgba(23, 32, 42, .28);
     }
+
+    html.drawer-mode .answer-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      position: fixed;
+      left: 16px;
+      bottom: calc(146px + env(safe-area-inset-bottom, 0px));
+      z-index: 120;
+      border-radius: 999px;
+      padding: 0 16px;
+      min-height: 44px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      background: #fff;
+      border: 1px solid #b9cfda;
+      box-shadow: 0 8px 18px rgba(23, 32, 42, .2);
+    }
+    html.drawer-mode .answer-toggle-btn.on {
+      color: #fff;
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    html.drawer-mode .answer-toggle-btn.on:hover { background: var(--accent-strong); }
 
     html.drawer-mode .drawer-close {
       display: grid;
