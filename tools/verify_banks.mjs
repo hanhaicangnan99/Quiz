@@ -189,6 +189,21 @@ if (webManifest) {
 }
 if (!html.includes("pwa.js")) fail("index.html 没有引入 pwa.js（离线缓存不会生效）");
 
+// app.js 里 E("xxx") 引用的元素必须真的存在于 index.html，避免改 HTML 后留下空引用
+const appSource = readText(path.join(APP, "app.js"));
+const referencedIds = new Set();
+for (const m of appSource.matchAll(/\bE\("([A-Za-z0-9_-]+)"\)/g)) referencedIds.add(m[1]);
+for (const m of appSource.matchAll(/getElementById\("([A-Za-z0-9_-]+)"\)/g)) referencedIds.add(m[1]);
+const missingIds = [...referencedIds].filter((id) => !html.includes(`id="${id}"`));
+if (missingIds.length) fail(`app.js 引用了 index.html 里不存在的元素：${missingIds.join(", ")}`);
+else console.log(`  app.js 引用的 ${referencedIds.size} 个元素 id 在 index.html 中都存在`);
+
+for (const el of ["drawerBtn", "drawerBackdrop", "drawerCloseBtn", "markedTab", "clearMarkBtn"]) {
+  if (!html.includes(`id="${el}"`)) fail(`index.html 缺少平板抽屉/标记所需元素：${el}`);
+}
+if (!/\.mark-btn|\.q-side/.test(readText(path.join(APP, "app.css")))) fail("app.css 缺少标记按钮样式");
+if (!/drawer-open/.test(readText(path.join(APP, "app.css")))) fail("app.css 缺少侧栏抽屉样式");
+
 const swSource = readText(path.join(APP, "sw.js"));
 const swListMatch = /const PRECACHE = \[([\s\S]*?)\]/.exec(swSource);
 if (!swListMatch) {

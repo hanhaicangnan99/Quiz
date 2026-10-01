@@ -106,7 +106,7 @@
     return {
       bankId: bank.id,
       bank: bank.questions,
-      correct: [], wrong: [], undone: [],
+      correct: [], wrong: [], undone: [], marked: [], markedSet: {},
       paper: [], answers: {},
       mode: "quiz", showAnswers: false, submitted: false,
       currentScope: "all", currentType: "all", currentSubject: "all", currentOrder: "sequential",
@@ -121,24 +121,32 @@
   function persistIds(st) {
     if (!st || !st.loaded) return;
     lsSet(bankKey(st.bankId, "ids"), {
-      c: idsOf(st.correct), w: idsOf(st.wrong), u: idsOf(st.undone)
+      c: idsOf(st.correct), w: idsOf(st.wrong), u: idsOf(st.undone), m: idsOf(st.marked)
     });
+  }
+
+  function rebuildMarkedSet(st) {
+    st.markedSet = {};
+    st.marked.forEach(function (q) { st.markedSet[q.id] = 1; });
   }
 
   function reconcile(st) {
     var saved = lsGet(bankKey(st.bankId, "ids"), {}) || {};
-    var cid = {}, wid = {}, uid = {}, seen = {};
+    var cid = {}, wid = {}, uid = {}, mid = {}, seen = {};
     (saved.c || []).forEach(function (id) { cid[id] = 1; });
     (saved.w || []).forEach(function (id) { wid[id] = 1; });
     (saved.u || []).forEach(function (id) { uid[id] = 1; });
-    st.correct = []; st.wrong = []; st.undone = [];
+    (saved.m || []).forEach(function (id) { mid[id] = 1; });
+    st.correct = []; st.wrong = []; st.undone = []; st.marked = [];
     st.bank.forEach(function (q) {
       if (seen[q.id]) return;   // 同一题库内重复 id 只统计一次
       seen[q.id] = 1;
+      if (mid[q.id]) st.marked.push(q);      // 标记是独立标签，与对错状态并存
       if (wid[q.id]) st.wrong.push(q);
       else if (cid[q.id]) st.correct.push(q);
       else st.undone.push(q);
     });
+    rebuildMarkedSet(st);
     st.loaded = true;
     persistIds(st);
   }
@@ -218,7 +226,9 @@
     ruleList: E("ruleList"), showAnswerToggle: E("showAnswerToggle"),
     addRuleBtn: E("addRuleBtn"), startQuizBtn: E("startQuizBtn"),
     clearWrongBtn: E("clearWrongBtn"), paperTab: E("paperTab"),
-    wrongTab: E("wrongTab"), paperSummary: E("paperSummary"),
+    wrongTab: E("wrongTab"), markedTab: E("markedTab"), paperSummary: E("paperSummary"),
+    clearMarkBtn: E("clearMarkBtn"),
+    drawerBtn: E("drawerBtn"), drawerCloseBtn: E("drawerCloseBtn"), drawerBackdrop: E("drawerBackdrop"),
     scoreBox: E("scoreBox"), content: E("content"),
     submitBtn: E("submitBtn"), submitBtnMobile: E("submitBtnMobile"),
     paperSummaryMobile: E("paperSummaryMobile"),
@@ -240,6 +250,7 @@
     if (scope === "correct") return state.correct;
     if (scope === "wrong") return state.wrong;
     if (scope === "undone") return state.undone;
+    if (scope === "marked") return state.marked;
     return state.bank;
   }
   function subjectMatch(q, subject) {
@@ -251,9 +262,87 @@
     return q.type === type;
   }
   function sLabel(s) {
-    return ({ all: "全部", correct: "正确试题", wrong: "错误试题", undone: "未做试题", mixed: "混合拼题" })[s] || "全部";
+    return ({
+      all: "全部", correct: "正确试题", wrong: "错误试题",
+      undone: "未做试题", marked: "标记试题", mixed: "混合拼题"
+    })[s] || "全部";
   }
   function tLabel(t) { return (!t || t === "all") ? "全部题型" : t; }
+
+  function isMarked(q) { return !!(state && state.markedSet[q.id]); }
+
+  function findQuestion(qid) {
+    var pool = [state.paper, state.marked, state.wrong, state.correct, state.undone];
+    for (var i = 0; i < pool.length; i++) {
+      for (var j = 0; j < pool[i].length; j++) {
+        if (pool[i][j].id === qid) return pool[i][j];
+      }
+    }
+    for (var k = 0; k < state.bank.length; k++) {
+      if (state.bank[k].id === qid) return state.bank[k];
+    }
+    return null;
+  }
+
+  function toggleMark(qid) {
+    var q = findQuestion(qid);
+    if (!q) return;
+    if (state.markedSet[qid]) {
+      state.marked = state.marked.filter(function (x) { return x.id !== qid; });
+    } else {
+      state.marked.push(q);
+    }
+    state.marked.sort(function (a, b) { return (ORDER_MAP[a.id] || 0) - (ORDER_MAP[b.id] || 0); });
+    rebuildMarkedSet(state);
+    persistIds(state);
+    if (state.mode === "marked") {
+      renderList(state.marked, "marked");
+    } else {
+      refreshMarkUi(qid);
+    }
+    updateCounters();
+  }
+
+  function clearMarks() {
+    if (!state.marked.length) return;
+    if (!window.confirm("确认清空标记？当前题库的 " + state.marked.length + " 道标记题将全部取消标记（对错记录不受影响）。")) return;
+    state.marked = [];
+    rebuildMarkedSet(state);
+    persistIds(state);
+    if (state.mode === "marked") renderList(state.marked, "marked");
+    else refreshMarkUi();
+    updateCounters();
+  }
+
+  /* 就地刷新标记按钮/题卡/题号导航，避免整页重绘导致答题状态和滚动位置跳动 */
+  function refreshMarkUi(qid) {
+    var list = qid
+      ? Array.prototype.slice.call(els.content.querySelectorAll('[data-mark-qid="' + cssEsc(qid) + '"]'))
+      : Array.prototype.slice.call(els.content.querySelectorAll("[data-mark-qid]"));
+    list.forEach(function (btn) {
+      var id = btn.dataset.markQid;
+      var on = !!state.markedSet[id];
+      btn.className = "mark-btn" + (on ? " on" : "");
+      btn.textContent = on ? "★ 已标记" : "☆ 标记";
+      btn.title = on ? "取消标记" : "标记这道题";
+      var card = btn.closest ? btn.closest(".question") : null;
+      if (card) card.classList.toggle("marked", on);
+    });
+    if (qid) {
+      var nav = E("questionNavList");
+      if (nav) {
+        var item = nav.querySelector('[data-nav-qid="' + cssEsc(qid) + '"]');
+        if (item) item.classList.toggle("marked", !!state.markedSet[qid]);
+      }
+    }
+  }
+
+  function updateCounters() {
+    var m = state.marked.length, w = state.wrong.length;
+    if (els.markedTab) els.markedTab.textContent = "标记题（" + m + "）";
+    if (els.wrongTab) els.wrongTab.textContent = "错题库（" + w + "）";
+    if (els.scopeChoices) renderScopeChoices();   // 让「标记试题（N）」的计数同步
+  }
 
   function getCount() {
     var sel = selRadio("quizCount") || "30";
@@ -327,6 +416,7 @@
     renderSubjectChoices();
     renderTypeChoices();
     renderRuleList();
+    updateCounters();
   }
 
   function renderScopeChoices() {
@@ -335,7 +425,8 @@
       ["all", "全部", state.bank.length],
       ["correct", "正确试题", state.correct.length],
       ["wrong", "错误试题", state.wrong.length],
-      ["undone", "未做试题", state.undone.length]
+      ["undone", "未做试题", state.undone.length],
+      ["marked", "标记试题", state.marked.length]
     ];
     state.currentScope = cur;
     els.scopeChoices.innerHTML = scopes.map(function (s) {
@@ -412,6 +503,7 @@
       if (!answered) cls = "pending";
       else if (state.submitted) cls = isCorrect(a, q.answer, q.type) ? "correct" : "wrong";
       else cls = "answered";
+      cls += isMarked(q) ? " marked" : "";
       return '<div class="q-nav-item ' + cls + '" data-nav-qid="' + escA(q.id) + '" title="' +
         esc(q.question) + '">' + (idx + 1) + "</div>";
     }).join("");
@@ -482,6 +574,19 @@
     return q.type === "多选题" ? a.indexOf(key) >= 0 : a === key;
   }
 
+  function markBtnHtml(q) {
+    var on = isMarked(q);
+    return '<button type="button" class="mark-btn' + (on ? " on" : "") + '" data-mark-qid="' + escA(q.id) +
+      '" title="' + (on ? "取消标记" : "标记这道题") + '">' + (on ? "★ 已标记" : "☆ 标记") + "</button>";
+  }
+
+  /* 题卡头部：题干 + 右侧竖排的「题型标签 / 标记按钮」 */
+  function qHeadHtml(q, titleHtml) {
+    var meta = esc(q.type) + (q.subject ? " · " + esc(q.subject) : "");
+    return '<div class="q-head"><div class="q-title">' + titleHtml + '</div><div class="q-side">' +
+      '<span class="badge">' + meta + "</span>" + markBtnHtml(q) + "</div></div>";
+  }
+
   function renderQ(q, idx, showAns) {
     var isJudge = /判断/.test(q.type);
     var inpType = q.type === "多选题" ? "checkbox" : "radio";
@@ -496,9 +601,8 @@
       }).join("") + "</div>"
       : '<input class="answer-text" data-qid="' + escA(q.id) + '" type="text" placeholder="请输入答案" value="' +
         escA(state.answers[q.id] || "") + '">';
-    var meta = esc(q.type) + (q.subject ? " · " + esc(q.subject) : "");
-    return '<article class="question" data-id="' + escA(q.id) + '"><div class="q-head"><div class="q-title">' +
-      (idx + 1) + ". " + esc(q.question) + '</div><span class="badge">' + meta + "</span></div>" + body +
+    return '<article class="question' + (isMarked(q) ? " marked" : "") + '" data-id="' + escA(q.id) + '">' +
+      qHeadHtml(q, (idx + 1) + ". " + esc(q.question)) + body +
       (showAns && q.explanation ? '<div class="result show answer" style="margin-top:8px;">解析：' + esc(q.explanation) + "</div>" : "") +
       '<div class="result" id="result_' + escA(q.id) + '"></div></article>';
   }
@@ -507,36 +611,50 @@
     return "正确答案：" + esc(q.answer) + (q.explanation ? "<br>解析：" + esc(q.explanation) : "");
   }
 
-  function renderWrongList() {
+  /* 只读列表：错题库 / 标记题共用（列出题干、选项、正确答案，并可标记/取消标记） */
+  function renderList(questions, mode) {
     els.submitBtn.disabled = true;
     els.submitBtnMobile.disabled = true;
     els.scoreBox.classList.remove("show");
-    els.paperSummary.textContent = "错题库：" + state.wrong.length + " 题";
-    els.paperSummaryMobile.textContent = els.paperSummary.textContent;
-    if (!state.wrong.length) {
-      renderEmpty("错题库为空。答题提交后，答错的题目会自动加入这里。");
+    var isMarkedList = mode === "marked";
+    var title = (isMarkedList ? "标记题" : "错题库") + "：" + questions.length + " 题";
+    els.paperSummary.textContent = title;
+    els.paperSummaryMobile.textContent = title;
+    if (!questions.length) {
+      renderEmpty(
+        isMarkedList
+          ? "还没有标记的题目。答题时点题目右上角的「☆ 标记」，就会收进这里。"
+          : "错题库为空。答题提交后，答错的题目会自动加入这里。",
+        title
+      );
       return;
     }
-    els.content.innerHTML = state.wrong.map(function (q, idx) {
+    els.content.innerHTML = questions.map(function (q, idx) {
       var o = (q.options && q.options.length)
         ? '<div class="options">' + q.options.map(function (opt) {
           return '<div class="option"><span></span><span><b>' + esc(opt.key) + ".</b> " + esc(opt.text) + "</span></div>";
         }).join("") + "</div>"
         : "";
-      var meta = esc(q.type) + (q.subject ? " · " + esc(q.subject) : "");
-      return '<article class="question"><div class="q-head"><div class="q-title">' + (idx + 1) + ". " +
-        esc(q.question) + '</div><span class="badge">' + meta + '</span></div>' + o +
+      var markButton = isMarkedList
+        ? '<button type="button" class="unmark-btn" data-mark-qid="' + escA(q.id) + '">取消标记</button>'
+        : "";
+      return '<article class="question' + (isMarked(q) ? " marked" : "") + '" data-id="' + escA(q.id) + '">' +
+        qHeadHtml(q, (idx + 1) + ". " + esc(q.question)) + o +
         '<div class="result show bad">正确答案：' + esc(q.answer) +
-        (q.explanation ? "<br>解析：" + esc(q.explanation) : "") + "</div></article>";
+        (q.explanation ? "<br>解析：" + esc(q.explanation) : "") + "</div>" + markButton + "</article>";
     }).join("");
   }
 
-  function renderEmpty(text) {
+  function renderWrongList() { renderList(state.wrong, "wrong"); }
+
+  function renderMarkedList() { renderList(state.marked, "marked"); }
+
+  function renderEmpty(text, summary) {
     els.submitBtn.disabled = true;
     els.submitBtnMobile.disabled = true;
     var nsec = E("questionNavSection");
     if (nsec) nsec.style.display = "none";
-    els.paperSummary.textContent = state.bank.length ? "请选择出题设置后开始。" : "题库为空。";
+    els.paperSummary.textContent = summary || (state.bank.length ? "请选择出题设置后开始。" : "题库为空。");
     els.paperSummaryMobile.textContent = els.paperSummary.textContent;
     els.content.innerHTML = '<div class="empty">' + esc(text || "选择出题设置后，点击开始出题按钮。") + "</div>";
   }
@@ -598,6 +716,8 @@
     els.paperSummary.textContent = "已提交：正确 " + right + "，错误 " + wrong + "，未做 " + undone;
     els.paperSummaryMobile.textContent = els.paperSummary.textContent;
     renderQuestionNav();
+    updateCounters();
+    closeDrawer();
   }
 
   function startQuiz() {
@@ -626,6 +746,7 @@
     renderPaper();
     els.paperSummaryMobile.textContent = els.paperSummary.textContent;
     saveSettings();
+    closeDrawer();
   }
 
   function addQuizRule() {
@@ -647,11 +768,12 @@
     state.undone = Array.from(u.values());
     persistIds(state);
     renderSidebar();
+    updateCounters();
     if (state.mode === "wrong") renderWrongList();
   }
 
   function resetAll() {
-    if (!window.confirm("确认全部重置？当前题库的正确、错误记录将清空，全部变回未做试题。")) return;
+    if (!window.confirm("确认全部重置？当前题库的正确、错误记录将清空，全部变回未做试题（标记不受影响）。")) return;
     var all = [], seen = {};
     state.correct.concat(state.wrong, state.undone).forEach(function (q) {
       if (!seen[q.id]) { seen[q.id] = 1; all.push(q); }
@@ -669,10 +791,15 @@
   }
 
   function switchTab(t) {
+    closeDrawer();
     if (t === "wrong") {
       state.mode = "wrong";
       setTab("wrong");
       renderWrongList();
+    } else if (t === "marked") {
+      state.mode = "marked";
+      setTab("marked");
+      renderMarkedList();
     } else {
       state.mode = "quiz";
       setTab("paper");
@@ -684,6 +811,26 @@
   function setTab(t) {
     els.paperTab.classList.toggle("active", t === "paper");
     els.wrongTab.classList.toggle("active", t === "wrong");
+    if (els.markedTab) els.markedTab.classList.toggle("active", t === "marked");
+  }
+
+  /* ============================================================ 侧栏抽屉（平板/手机） */
+
+  function openDrawer() {
+    document.body.classList.add("drawer-open");
+  }
+
+  function closeDrawer() {
+    document.body.classList.remove("drawer-open");
+  }
+
+  function isDrawerOpen() {
+    return document.body.classList.contains("drawer-open");
+  }
+
+  function toggleDrawer() {
+    if (isDrawerOpen()) closeDrawer();
+    else openDrawer();
   }
 
   /* ============================================================ 题库切换 */
@@ -738,6 +885,7 @@
     else renderEmpty("已切换到「" + BANKS[id].name + "」，选择出题设置后点击开始出题。");
     renderQuestionNav();
     saveSettings();
+    closeDrawer();
     if (opts && opts.scrollTop) window.scrollTo(0, 0);
   }
 
@@ -948,6 +1096,7 @@
       renderRuleList();
     });
     els.clearWrongBtn.addEventListener("click", clearWrong);
+    els.clearMarkBtn.addEventListener("click", clearMarks);
     E("resetAllBtn").addEventListener("click", resetAll);
 
     var importFile = els.importFile;
@@ -972,14 +1121,32 @@
     els.submitBtnMobile.addEventListener("click", submitPaper);
     els.paperTab.addEventListener("click", function () { switchTab("paper"); });
     els.wrongTab.addEventListener("click", function () { switchTab("wrong"); });
+    if (els.markedTab) els.markedTab.addEventListener("click", function () { switchTab("marked"); });
     els.content.addEventListener("change", capAnswer);
     els.content.addEventListener("input", capAnswer);
+
+    /* 题卡上的「☆ 标记 / ★ 已标记 / 取消标记」按钮（事件委托） */
+    els.content.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest("[data-mark-qid]") : null;
+      if (!btn) return;
+      e.preventDefault();
+      toggleMark(btn.dataset.markQid);
+    });
+
+    /* 侧栏抽屉：小按钮呼出，点遮罩/关闭键/跳题后自动收起 */
+    if (els.drawerBtn) els.drawerBtn.addEventListener("click", toggleDrawer);
+    if (els.drawerCloseBtn) els.drawerCloseBtn.addEventListener("click", closeDrawer);
+    if (els.drawerBackdrop) els.drawerBackdrop.addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && isDrawerOpen()) closeDrawer();
+    });
 
     E("questionNavList").addEventListener("click", function (e) {
       var item = e.target.closest(".q-nav-item");
       if (!item) return;
       var qid = item.dataset.navQid;
       var qEl = document.querySelector('.question[data-id="' + cssEsc(qid) + '"]');
+      closeDrawer();
       if (!qEl) return;
       qEl.scrollIntoView({ behavior: "smooth", block: "center" });
       qEl.style.boxShadow = "0 0 0 3px var(--accent)";

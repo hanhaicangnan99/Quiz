@@ -321,24 +321,6 @@
     .mobile-submit-bar button { flex: 1; }
     .mobile-submit-bar .summary { font-size: 12px; color: var(--muted); flex: 0 0 auto; }
 
-    @media (max-width: 860px) {
-      .app { grid-template-columns: 1fr; }
-      aside {
-        position: static;
-        height: auto;
-        border-right: 0;
-        border-bottom: 1px solid var(--line);
-        display: block;
-      }
-      .sidebar-bottom { position: static; }
-      main { padding: 18px; padding-bottom: 70px; }
-      .topbar { align-items: stretch; }
-      .tabs { width: 100%; }
-      .tab { flex: 1; min-width: 0; }
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .mobile-submit-bar { display: flex; }
-    }
-
     /* ===== 以下为合并版 App 新增：题库选择 / 科目筛选 ===== */
     select {
       width: 100%;
@@ -377,3 +359,133 @@
     .import-section summary::before { content: "▸ "; color: var(--accent); font-weight: 700; }
     .import-section details[open] summary::before { content: "▾ "; }
     .import-section details[open] summary { margin-bottom: 6px; }
+
+    /* ===== 题目标记（★）===== */
+    .q-side { flex: 0 0 auto; display: grid; gap: 6px; justify-items: end; }
+
+    .mark-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 30px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--warn);
+      background: #fffaf0;
+      border: 1px solid #e8c9a0;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .mark-btn:hover { background: #fff3dd; border-color: var(--warn); }
+    .mark-btn.on { background: #ffeccc; border-color: var(--warn); color: #7a4a06; }
+    .mark-btn.on:hover { background: #ffe1b8; }
+
+    .question.marked { border-color: #e0b878; box-shadow: 0 0 0 2px rgba(160, 98, 18, .14), var(--shadow); }
+
+    .q-nav-item { position: relative; }
+    .q-nav-item.marked::after {
+      content: "★";
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      font-size: 11px;
+      line-height: 1;
+      color: var(--warn);
+      text-shadow: 0 0 3px #fff, 0 0 2px #fff, 0 0 2px #fff;
+    }
+
+    /* 标记题列表里的「取消标记」按钮 */
+    .unmark-btn {
+      margin-top: 10px;
+      min-height: 32px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--warn);
+      background: #fffaf0;
+      border: 1px solid #e8c9a0;
+      border-radius: 6px;
+    }
+    .unmark-btn:hover { background: #fff3dd; border-color: var(--warn); }
+
+    /* ===== 平板抽屉：小按钮呼出整个侧栏，不挤压题目 ===== */
+    .drawer-btn, .drawer-close, .drawer-backdrop { display: none; }
+
+    @media (max-width: 1180px), (max-width: 1440px) and (pointer: coarse) {
+      .app { grid-template-columns: 1fr; }
+
+      aside {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: min(88vw, 380px);
+        height: auto;
+        z-index: 130;
+        display: flex;
+        border-right: 1px solid var(--line);
+        border-bottom: 0;
+        box-shadow: 0 0 34px rgba(23, 32, 42, .24);
+        transform: translateX(-102%);
+        transition: transform .22s ease;
+        will-change: transform;
+      }
+      body.drawer-open aside { transform: translateX(0); }
+      body.drawer-open { overflow: hidden; }
+
+      body.drawer-open .drawer-backdrop {
+        display: block;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background: rgba(23, 32, 42, .42);
+        z-index: 125;
+      }
+
+      .drawer-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        position: fixed;
+        left: 16px;
+        bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+        z-index: 120;
+        border-radius: 999px;
+        padding: 0 18px;
+        min-height: 48px;
+        font-size: 14px;
+        font-weight: 700;
+        box-shadow: 0 10px 22px rgba(23, 32, 42, .28);
+      }
+
+      .drawer-close {
+        display: grid;
+        place-items: center;
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 2;
+        width: 38px;
+        height: 38px;
+        min-height: 38px;
+        padding: 0;
+        border-radius: 50%;
+        font-size: 15px;
+        color: var(--muted);
+        background: #fff;
+        border: 1px solid var(--line);
+      }
+
+      .brand { padding-right: 46px; }
+      .sidebar-bottom { position: static; }
+      main { padding: 18px; padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+      .topbar { align-items: stretch; }
+      .tabs { width: 100%; }
+      .tab { flex: 1; min-width: 0; padding-left: 8px; padding-right: 8px; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .mobile-submit-bar { display: flex; }
+      .q-nav-list { max-height: 42vh; }
+    }

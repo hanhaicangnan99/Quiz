@@ -376,6 +376,76 @@ function main() {
     check(!dom5.doc.getElementById("bankSelect").innerHTML.includes(deletedId), "删除后重开不再出现该导入题库");
   }
 
+  console.log("9) 题目标记 / 标记题库 / 平板侧栏抽屉");
+  const dom6 = createDom(dom.store);
+  bootAppWithImport(dom6);
+  const el6 = (id) => dom6.doc.getElementById(id);
+  const body = dom6.doc.body;
+
+  check(/标记题（0）/.test(el6("markedTab").textContent), "标记题页签显示 0", el6("markedTab").textContent);
+  check(/标记试题（0）/.test(el6("scopeChoices").innerHTML), "练习模式含「标记试题」", "");
+
+  dom6.radioState.quizScope = "all";
+  dom6.radioState.quizType = "all";
+  dom6.radioState.quizCount = "30";
+  el6("startQuizBtn").click();
+  let arts6 = el6("content").innerHTML;
+  const markedIds = [...arts6.matchAll(/data-mark-qid="([^"]+)"/g)].map((m) => m[1]);
+  check(markedIds.length === 30, "30 道题每题都有标记按钮", String(markedIds.length));
+  check(/class="q-side"/.test(arts6) && /☆ 标记/.test(arts6), "标记按钮位于题型标签下方");
+
+  // 标记 3 道题
+  el6("content").dispatch("click", { target: { closest: () => ({ dataset: { markQid: markedIds[0] } }) } });
+  el6("content").dispatch("click", { target: { closest: () => ({ dataset: { markQid: markedIds[1] } }) } });
+  el6("content").dispatch("click", { target: { closest: () => ({ dataset: { markQid: markedIds[2] } }) } });
+  check(/标记题（3）/.test(el6("markedTab").textContent), "标记 3 道后页签计数为 3", el6("markedTab").textContent);
+  check(/标记试题（3）/.test(el6("scopeChoices").innerHTML), "练习模式计数同步为 3");
+
+  // 再点一次取消第 3 道
+  el6("content").dispatch("click", { target: { closest: () => ({ dataset: { markQid: markedIds[2] } }) } });
+  check(/标记题（2）/.test(el6("markedTab").textContent), "再次点击可取消标记", el6("markedTab").textContent);
+
+  el6("markedTab").dispatch("click");
+  let markedHtml = el6("content").innerHTML;
+  check((markedHtml.match(/class="question/g) || []).length === 2, "标记题列表显示 2 题");
+  check(/取消标记/.test(markedHtml), "标记题列表带取消标记按钮");
+  check(/标记题：2 题/.test(el6("paperSummary").textContent), "摘要显示标记题数量", el6("paperSummary").textContent);
+
+  // 在标记题页签内取消一条
+  el6("content").dispatch("click", { target: { closest: () => ({ dataset: { markQid: markedIds[0] } }) } });
+  check(/标记题（1）/.test(el6("markedTab").textContent), "在标记题列表内可直接取消", el6("markedTab").textContent);
+
+  // 用「标记试题」范围出题
+  el6("paperTab").dispatch("click");
+  dom6.radioState.quizScope = "marked";
+  dom6.radioState.quizType = "all";
+  dom6.radioState.quizCount = "all";
+  el6("startQuizBtn").click();
+  const markedPaper = [...new Set([...el6("content").innerHTML.matchAll(/data-id="([^"]+)"/g)].map((m) => m[1]))];
+  check(markedPaper.length === 1, "按「标记试题」出题只出标记过的题", String(markedPaper.length));
+  check(markedPaper[0] === markedIds[1], "出的正是被标记的那道题");
+
+  // 标记持久化
+  const dom7 = createDom(dom6.store);
+  bootApp(dom7, scripts);
+  const el7 = (id) => dom7.doc.getElementById(id);
+  check(/标记题（1）/.test(el7("markedTab").textContent), "重开后标记仍在", el7("markedTab").textContent);
+  el7("clearMarkBtn").dispatch("click");
+  check(/标记题（0）/.test(el7("markedTab").textContent), "清空标记生效", el7("markedTab").textContent);
+
+  // 侧栏抽屉
+  check(body.classList.contains("drawer-open") === false, "抽屉默认收起");
+  el6("drawerBtn").dispatch("click");
+  check(body.classList.contains("drawer-open") === true, "点小按钮可呼出侧栏");
+  el6("drawerBackdrop").dispatch("click");
+  check(body.classList.contains("drawer-open") === false, "点遮罩收起侧栏");
+  el6("drawerBtn").dispatch("click");
+  el6("drawerCloseBtn").dispatch("click");
+  check(body.classList.contains("drawer-open") === false, "点关闭键收起侧栏");
+  el6("drawerBtn").dispatch("click");
+  el6("startQuizBtn").click();
+  check(body.classList.contains("drawer-open") === false, "开始出题后自动收起侧栏（不挤压题目）");
+
   console.log("");
   if (failures.length) {
     console.log(`冒烟测试失败 ${failures.length} 项：`);

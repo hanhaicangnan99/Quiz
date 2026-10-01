@@ -20,8 +20,12 @@
     <div id="paperSummaryMobile" class="summary">请选择题型和数量后开始出题。</div>
   </div>
 
+  <button id="drawerBtn" class="drawer-btn" type="button" aria-label="打开侧栏（题库 / 跳题 / 设置）">☰ 侧栏</button>
+  <div id="drawerBackdrop" class="drawer-backdrop"></div>
+
   <div class="app">
     <aside>
+      <button id="drawerCloseBtn" class="drawer-close" type="button" aria-label="收起侧栏">✕</button>
       <div class="sidebar-top">
         <div class="brand">
           <div class="brand-mark">答</div>
@@ -104,6 +108,7 @@
           <div class="actions">
             <button id="startQuizBtn" type="button">开始出题</button>
             <button id="clearWrongBtn" class="danger" type="button">清空错题库</button>
+            <button id="clearMarkBtn" class="danger" type="button">清空标记</button>
             <button id="resetAllBtn" class="danger" type="button">全部重置(变未做)</button>
           </div>
         </section>
@@ -133,6 +138,7 @@
         <div class="tabs" role="tablist">
           <button id="paperTab" class="tab active" type="button">答题</button>
           <button id="wrongTab" class="tab" type="button">错题库</button>
+          <button id="markedTab" class="tab" type="button">标记题</button>
         </div>
       </div>
 

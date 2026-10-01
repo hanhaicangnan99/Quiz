@@ -1,6 +1,6 @@
 /* 离线缓存（PWA）。只在 https/http 下由 pwa.js 注册，扩展页不会用到。
    改了 index.html / app.js / banks/* 之后，把 CACHE 版本号 +1，用户下次打开就会拿到新版。 */
-const CACHE = "yxa-v1";
+const CACHE = "yxa-v2";
 
 const PRECACHE = [
   "./index.html",
