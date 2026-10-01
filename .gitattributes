@@ -1,0 +1,6 @@
+# 网页项目统一用 LF，避免 Windows 检出时被改成 CRLF 造成无谓的 diff
+* text=auto eol=lf
+*.png binary
+*.xlsx binary
+*.xls binary
+*.crx binary

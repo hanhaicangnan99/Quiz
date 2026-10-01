@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "乙烯答题练习",
+  "version": "1.0.0",
+  "description": "离线题库练习：危害因素辨识与风险防控、程序文件、乙烯装置操作工认定题库（中级/高级/技师），可自由切换题库，支持导入 xlsx/xls/csv 题库。",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA3Dl+EWshlA+vRksSXjnrPXpuX0U7fDqCIVbmdFi15RL51CQJofv6CrwMUXUyjGpwbU7FYBjPO5Gei6+maaVcwzEUfRurdCFfy19YcITEJkD4Da352CP9FxsMjzcDiiDvuBzz4pgRvJvZqfGPJAZx3lQERo3yABc/34H0WvqR/RoJ1JC6qeggUqRfTZxjFMYHn3bkX3xXzjheX6TtIXeMc5QvEUuobnrvsq83jEjk8fBqg5qflY6i5ssiPm3wan3JjOMxq2d5DNKlcq5MX2hylgBgCDK2nWXXCBRZRxe4/qKtingZrVvMW/752zudNcqwKB7KMnvJdNbPg/rda8hoNQIDAQAB",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "打开答题练习",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

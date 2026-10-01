@@ -1,0 +1,16 @@
+# 临时/测试文件
+_btest*
+_preview*
+_sample_test*
+_shot.png
+__pycache__/
+*.pyc
+
+# 千万不要把扩展私钥提交上去（它决定扩展 ID，且打包 .crx 时需要）
+*.pem
+extension-key.pem
+
+# 系统垃圾文件
+Thumbs.db
+desktop.ini
+.DS_Store
