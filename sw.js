@@ -2,15 +2,15 @@
    改了 index.html / app.css / app.js / layout.js 之后：
    1) 把下面的 CACHE 版本号 +1；
    2) 把 PRECACHE 里带 ?v= 的条目和 index.html 里的 ?v= 改成同一个新版本号（tools/verify_banks.mjs 会检查两者是否一致）。 */
-const CACHE = "yxa-v7";
+const CACHE = "yxa-v8";
 
 const PRECACHE = [
   "./index.html",
-  "./app.css?v=1.8",
-  "./app.js?v=1.8",
-  "./pwa.js?v=1.8",
-  "./layout.js?v=1.8",
-  "./manifest.webmanifest?v=1.8",
+  "./app.css?v=1.9",
+  "./app.js?v=1.9",
+  "./pwa.js?v=1.9",
+  "./layout.js?v=1.9",
+  "./manifest.webmanifest?v=1.9",
   "./icons/icon16.png",
   "./icons/icon48.png",
   "./icons/icon128.png",

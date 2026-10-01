@@ -1,4 +1,4 @@
-﻿/* 运行时冒烟测试：用最小 DOM 桩加载真实的 app.js，验证启动、切库、出题、
+/* 运行时冒烟测试：用最小 DOM 桩加载真实的 app.js，验证启动、切库、出题、
    判分、错题流转与「重新打开后进度保留」等关键路径。
    用法（在 乙烯答题App 目录下）：node tools/smoke_test.mjs
    这是开发期自检工具，不参与扩展运行时。 */
@@ -529,7 +529,9 @@ function main() {
   check(/错题库（2）/.test(el8("wrongTab").textContent), "两道题进入错题库", el8("wrongTab").textContent);
   el8("wrongTab").dispatch("click");
   const expHtml = el8("content").innerHTML;
-  check(/解析：这里是解析内容。/.test(expHtml), "★ 选择题的文字栏显示解析内容");
+  check(/这里是解析内容。/.test(expHtml), "★ 解析内容出现在列表里");
+  check(/details class="explain"/.test(expHtml), "★ 解析用可折叠的 details 包裹");
+  check(!/details class="explain" open/.test(expHtml), "★ 解析默认是折叠的（不占版面）");
   check(!/正确答案：B/.test(expHtml), "★ 选择题不出现「正确答案：B」");
   check(/正确答案：参考答案文本/.test(expHtml), "★ 无选项的简答题仍用文字给出正确答案");
   check(/correct-highlight/.test(expHtml), "带解析的题同样标绿正确选项");
@@ -562,7 +564,7 @@ function main() {
   check(dom6.win.YXA_LAYOUT.pref() === "drawer", "再点切回抽屉", dom6.win.YXA_LAYOUT.pref());
   check(root.classList.contains("drawer-mode"), "切回后 html 上是抽屉形态");
   check(/切换为并排显示/.test(el6("modeToggleBtn").textContent), "按钮文案随模式变化", el6("modeToggleBtn").textContent);
-  check(/^v1\.8/.test(el6("layoutStatus").textContent), "状态行带版本号 v1.8", el6("layoutStatus").textContent);
+  check(/^v1\.9/.test(el6("layoutStatus").textContent), "状态行带版本号 v1.9", el6("layoutStatus").textContent);
 
   console.log("");
   if (failures.length) {

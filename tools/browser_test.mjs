@@ -1,4 +1,4 @@
-/* 真实浏览器回归测试：在 Chrome 里加载 index.html（注入临时探针），
+﻿/* 真实浏览器回归测试：在 Chrome 里加载 index.html（注入临时探针），
    用「计算后的样式」验证那些 DOM 桩测不出来的东西：
    - 抽屉按钮点开后侧栏是否真的滑出来了（transform）、遮罩是否真的出现
    - 抽屉/并排两种形态下 aside 的定位、题目是否满屏
@@ -103,6 +103,63 @@ window.addEventListener("load", function () {
     log.push("greenAfterToggle=" + (document.querySelectorAll("#content .option.correct-highlight").length > 0));
     ansBtn.click();
     log.push("greenAfterToggleOff=" + (document.querySelectorAll("#content .option.correct-highlight").length > 0));
+
+    // —— 解析折叠 + 切换显示答案时不让当前题目位移 ——
+    // 换到「程序文件题库 → 联锁保护系统管理规定」：35 题里确定有 8 题带解析
+    var bankSel = q("bankSelect");
+    bankSel.value = "cx";
+    bankSel.dispatchEvent(new Event("change", { bubbles: true }));
+    var subj = q("subjectSelect");
+    for (var si = 0; si < subj.options.length; si++) {
+      if (/联锁保护系统管理规定/.test(subj.options[si].text)) { subj.value = subj.options[si].value; break; }
+    }
+    subj.dispatchEvent(new Event("change", { bubbles: true }));
+    q("showAnswerToggle").checked = true;          // 解析只在「显示答案」打开时才出现
+    q("showAnswerToggle").dispatchEvent(new Event("change", { bubbles: true }));
+    var countAll = document.querySelector('input[name="quizCount"][value="all"]');
+    if (countAll) countAll.checked = true;
+    q("startQuizBtn").click();
+    var cards = document.querySelectorAll("#content article.question");
+    log.push("cxPaper=" + cards.length);
+    log.push("explainCount=" + document.querySelectorAll("#content .explain").length);
+    var explains = document.querySelectorAll("#content .explain");
+    var openCount = 0, totalH = 0;
+    for (var ei = 0; ei < explains.length; ei++) {
+      if (explains[ei].open) openCount++;
+      totalH += explains[ei].getBoundingClientRect().height;
+    }
+    log.push("explainOpenCount=" + openCount);
+    log.push("explainTotalH=" + Math.round(totalH));
+    log.push("explainPillH=" + Math.round(explains[0] ? explains[0].getBoundingClientRect().height : 0));
+
+    var firstSummary = document.querySelector("#content .explain > summary");
+    if (firstSummary) {
+      firstSummary.click();
+      log.push("explainOpenHeight=" + Math.round(document.querySelector("#content .explain-body").offsetHeight));
+      firstSummary.click();
+    }
+
+    // 把最后一道带解析的题滚到视口顶部，然后关掉「显示答案」，看它是否还在原位
+    // （关闭时上面 7 道题的解析胶囊会消失，不补偿的话它会上移约 260px）
+    var explainCards = document.querySelectorAll("#content article.question");
+    var anchorCard = null;
+    for (var ci = explainCards.length - 1; ci >= 0; ci--) {
+      if (explainCards[ci].querySelector(".explain")) { anchorCard = explainCards[ci]; break; }
+    }
+    if (anchorCard) {
+      anchorCard.scrollIntoView({ block: "center" });   // 让这道题落在视口正中（app 以正中那题作为锚点）
+      var anchorId = anchorCard.dataset.id;
+      var topBefore = Math.round(document.querySelector('.question[data-id="' + anchorId + '"]').getBoundingClientRect().top);
+      q("showAnswerToggle").checked = false;
+      q("showAnswerToggle").dispatchEvent(new Event("change", { bubbles: true }));
+      var topAfter = Math.round(document.querySelector('.question[data-id="' + anchorId + '"]').getBoundingClientRect().top);
+      log.push("anchorShift=" + (topAfter - topBefore));
+      log.push("greenGone=" + (document.querySelectorAll("#content .option.correct-highlight").length === 0));
+      // 打开时应重新标绿
+      q("showAnswerToggle").checked = true;
+      q("showAnswerToggle").dispatchEvent(new Event("change", { bubbles: true }));
+      log.push("paperHasGreen=" + (document.querySelectorAll("#content .option.correct-highlight").length > 0));
+    }
     var markBtn = document.querySelector("#content [data-mark-qid]");
     markBtn.click();
     log.push("markBtnText=" + markBtn.textContent);
@@ -192,6 +249,18 @@ if (narrow[0] === "NO-TITLE") {
   check(value(narrow, "greenAfterToggle") === "true", "★ 浮动按钮点了题目正确选项真的标绿", value(narrow, "greenAfterToggle"));
   check(value(narrow, "greenAfterToggleOff") === "false", "再点一下绿色消失", value(narrow, "greenAfterToggleOff"));
   check(value(narrow, "ansBtnLabelBack") === "显示答案", "按钮文案切回「显示答案」", value(narrow, "ansBtnLabelBack"));
+
+  check(Number(value(narrow, "cxPaper")) === 35, "切到「联锁保护系统管理规定」出 35 题", value(narrow, "cxPaper"));
+  check(Number(value(narrow, "explainCount")) === 8, "其中 8 题带解析（确定性样本）", value(narrow, "explainCount"));
+  check(Number(value(narrow, "explainOpenCount")) === 0, "★ 解析默认全部折叠（没有一个是展开的）", value(narrow, "explainOpenCount"));
+  check(Number(value(narrow, "explainPillH")) > 0 && Number(value(narrow, "explainPillH")) < 45,
+    "★ 折叠时「解析」胶囊很矮（<45px），不占版面", value(narrow, "explainPillH"));
+  check(Number(value(narrow, "explainTotalH")) < 8 * 45,
+    "★ 8 个解析加起来的高度远小于展开时的正文高度", value(narrow, "explainTotalH"));
+  check(Number(value(narrow, "explainOpenHeight")) > 20, "点开后解析能正常展开", value(narrow, "explainOpenHeight"));
+  check(Math.abs(Number(value(narrow, "anchorShift"))) <= 3,
+    "★ 切换显示答案时，当前题目纹丝不动（锚点位移 ≤3px）", `shift=${value(narrow, "anchorShift")}px`);
+  check(value(narrow, "paperHasGreen") === "true", "切换后答案确实标绿了", value(narrow, "paperHasGreen"));
   check(Number(value(narrow, "paperW")) > Number(value(narrow, "asideW")) * 2,
     "题目区宽度不受侧栏挤压", `paper=${value(narrow, "paperW")} aside=${value(narrow, "asideW")}`);
 
@@ -202,7 +271,7 @@ if (narrow[0] === "NO-TITLE") {
   check(Number(value(narrow, "navMarked")) === 1, "题号导航出现 ★", value(narrow, "navMarked"));
   check(/标记题（1）/.test(value(narrow, "tabText")), "标记题页签计数更新", value(narrow, "tabText"));
   check(Number(value(narrow, "navWidth")) > 100, "抽屉里题目导航可见且有宽度", value(narrow, "navWidth"));
-  check(/^v1\.8/.test(value(narrow, "statusLine")), "状态行显示 v1.8", value(narrow, "statusLine"));
+  check(/^v1\.9/.test(value(narrow, "statusLine")), "状态行显示 v1.9", value(narrow, "statusLine"));
   check(!/PROBE-ERROR/.test(narrow.join("|")), "探针无异常", narrow.filter((l) => /ERROR/.test(l)).join(" "));
 }
 

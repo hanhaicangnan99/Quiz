@@ -17,7 +17,7 @@
   var KEY_LAST = "lastBank";
   var KEY_IMPORTED = "importedBanks";
   var GROUP_IMPORTED = "导入题库";
-  var APP_VERSION = "1.8";
+  var APP_VERSION = "1.9";
 
   var TYPE_ORDER = ["单选题", "多选题", "判断题", "填空题", "简答题", "计算题", "论述题"];
 
@@ -606,12 +606,19 @@
         escA(state.answers[q.id] || "") + '">';
     return '<article class="question' + (isMarked(q) ? " marked" : "") + '" data-id="' + escA(q.id) + '">' +
       qHeadHtml(q, (idx + 1) + ". " + esc(q.question)) + body +
-      (showAns && q.explanation ? '<div class="result show answer" style="margin-top:8px;">解析：' + esc(q.explanation) + "</div>" : "") +
+      (showAns ? explanationHtml(q) : "") +
       '<div class="result" id="result_' + escA(q.id) + '"></div></article>';
   }
 
   function ansHtml(q) {
-    return "正确答案：" + esc(q.answer) + (q.explanation ? "<br>解析：" + esc(q.explanation) : "");
+    return "正确答案：" + esc(q.answer);
+  }
+
+  /* 解析默认折叠：不占版面，点开才展开，避免把下面的题目挤走 */
+  function explanationHtml(q) {
+    if (!q.explanation) return "";
+    return '<details class="explain"><summary>解析</summary><div class="explain-body">' +
+      esc(q.explanation) + "</div></details>";
   }
 
   /* 列表里只读的选项（无勾选框）：与答题页保持同一套「正确选项标绿」规则 */
@@ -651,12 +658,12 @@
       var optsHtml = listOptionsHtml(q, showAns);
       var answerPart = "";
       if (showAns) {
-        // 有选项的题：正确答案已由绿色选项表示，这里只放解析（有的话）
+        // 有选项的题：正确答案已由绿色选项表示，无需重复文字
         // 无选项的主观题（简答/计算）：没有可标绿的选项，仍需用文字给出正确答案
-        var lines = [];
-        if (!optsHtml.length) lines.push("正确答案：" + esc(q.answer));
-        if (q.explanation) lines.push("解析：" + esc(q.explanation));
-        answerPart = lines.length ? '<div class="result show answer">' + lines.join("<br>") + "</div>" : "";
+        if (!optsHtml.length) {
+          answerPart += '<div class="result show answer">正确答案：' + esc(q.answer) + "</div>";
+        }
+        answerPart += explanationHtml(q);   // 解析折叠显示，不占版面
       }
       return '<article class="question' + (isMarked(q) ? " marked" : "") + '" data-id="' + escA(q.id) + '">' +
         qHeadHtml(q, (idx + 1) + ". " + esc(q.question)) +
@@ -718,7 +725,7 @@
       else { wrong++; pC.delete(q.id); pW.set(q.id, q); pU.delete(q.id); }
       if (box) {
         box.className = "result show " + (correct ? "ok" : "bad");
-        box.innerHTML = rText(answered, correct, u) + "<br>" + ansHtml(q);
+        box.innerHTML = rText(answered, correct, u) + "<br>" + ansHtml(q) + explanationHtml(q);
       }
     });
     state.correct = Array.from(pC.values());
@@ -803,13 +810,41 @@
     renderSidebar();
   }
 
+  /* 切换显示答案时不让内容位移：记住屏幕正中那道题（你正在看的那道），
+     重绘后把它放回原处。解析是折叠的，但万一有高度变化也不会把当前题目挤走。 */
+  function keepScrollAnchor(mutate) {
+    var content = els.content;
+    var cards = content.querySelectorAll(".question");
+    var anchorId = null, topBefore = 0;
+    var center = (window.innerHeight || 0) / 2;
+    var bestDist = Infinity;
+    for (var i = 0; i < cards.length; i++) {
+      var rect = cards[i].getBoundingClientRect();
+      if (rect.bottom <= 0 || rect.top >= (window.innerHeight || 0)) continue;
+      var dist = Math.abs((rect.top + rect.bottom) / 2 - center);
+      if (dist < bestDist) {
+        bestDist = dist;
+        anchorId = cards[i].dataset ? cards[i].dataset.id : null;
+        topBefore = rect.top;
+      }
+    }
+    if (mutate) mutate();
+    if (!anchorId) return;
+    var again = content.querySelector('.question[data-id="' + cssEsc(anchorId) + '"]');
+    if (!again) return;
+    var delta = again.getBoundingClientRect().top - topBefore;
+    if (Math.abs(delta) > 1 && typeof window.scrollBy === "function") window.scrollBy(0, delta);
+  }
+
   function toggleAns() {
     state.showAnswers = els.showAnswerToggle.checked;
     saveSettings();
     updateAnswerToggleBtn();
-    if (state.mode === "quiz" && state.paper.length) renderPaper();
-    else if (state.mode === "wrong") renderWrongList();
-    else if (state.mode === "marked") renderMarkedList();
+    keepScrollAnchor(function () {
+      if (state.mode === "quiz" && state.paper.length) renderPaper();
+      else if (state.mode === "wrong") renderWrongList();
+      else if (state.mode === "marked") renderMarkedList();
+    });
   }
 
   /* 抽屉形态下浮动的「显示答案 / 隐藏答案」按钮（在「☰ 侧栏」上方） */

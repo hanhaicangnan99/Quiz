@@ -412,6 +412,38 @@
     /* 错题库 / 标记题：答案隐藏时不再有任何提示条，答案显示由侧栏开关
        或抽屉形态下浮动的「显示答案」按钮控制 */
 
+    /* 解析：默认折叠的小胶囊，不占版面；点开才展开 */
+    .explain { margin-top: 10px; }
+    .explain > summary {
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 2px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-strong);
+      background: var(--soft);
+      border: 1px solid #c8e2eb;
+      border-radius: 999px;
+      list-style: none;
+    }
+    .explain > summary::-webkit-details-marker { display: none; }
+    .explain > summary::before { content: "▸ "; }
+    .explain[open] > summary::before { content: "▾ "; }
+    .explain[open] > summary { background: #d9ecf4; }
+    .explain-body {
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--soft);
+      border: 1px solid #c8e2eb;
+      color: var(--accent-strong);
+      font-size: 14px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+
     /* ===== 侧栏两种形态：抽屉（浮层，题目满屏）/ 并排 =====
        形态由 layout.js 打在 <html> 上的 drawer-mode / side-mode 类决定，
        并可被用户在侧栏底部手动切换（记住选择），不再只靠媒体查询判断宽度。 */
