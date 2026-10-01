@@ -479,16 +479,18 @@ function main() {
   check(/答案已隐藏/.test(el6("paperSummary").textContent), "摘要标明答案已隐藏", el6("paperSummary").textContent);
 
   clickShowAnsBtn();
-  check(el6("showAnswerToggle").checked === true, "点提示里的按钮即打开显示答案");  listHtml = el6("content").innerHTML;
+  check(el6("showAnswerToggle").checked === true, "点提示里的按钮即打开显示答案");
+  listHtml = el6("content").innerHTML;
   check(/correct-highlight/.test(listHtml), "显示答案后正确选项标绿");
-  check(/正确答案：/.test(listHtml), "显示答案后出现正确答案文本");
-  check(/result show answer/.test(listHtml), "答案区样式与答题页一致");
+  check(!/正确答案：/.test(listHtml), "★ 选择题不再出现「正确答案：X」文字栏（由绿色选项表示）");
+  check(!/result show answer/.test(listHtml), "★ 无解析时不显示多余的文字栏");
 
   el6("showAnswerToggle").checked = false;
   el6("showAnswerToggle").dispatch("change");
   listHtml = el6("content").innerHTML;
   check(!/correct-highlight/.test(listHtml), "侧栏开关可以再隐藏答案");
   check(!/正确答案：/.test(listHtml), "隐藏时不残留答案文本");
+  check(/答案已隐藏/.test(listHtml), "隐藏时给出提示条");
 
   // 标记题列表同样受该开关控制
   el6("showAnswerToggle").checked = true;
@@ -496,7 +498,37 @@ function main() {
   el6("markedTab").dispatch("click");
   const markedHtml2 = el6("content").innerHTML;
   check(/correct-highlight/.test(markedHtml2), "标记题列表也标绿正确选项");
-  check(/result show answer/.test(markedHtml2), "标记题列表显示正确答案");
+  check(!/正确答案：/.test(markedHtml2), "标记题列表也不出现「正确答案：」文字栏");
+
+  console.log("10b) 有解析的题只放解析；无选项的主观题仍显示正确答案");
+  const csvWithExp = "题型,题干,答案,选项A,选项B,选项C,选项D,解析\n" +
+    "单选题,解析栏测试题,B,甲,乙,丙,丁,这里是解析内容。\n" +
+    "简答题,主观题测试题,参考答案文本,,,,\n";
+  const dom8 = createDom(new Map());
+  bootAppWithImport(dom8);
+  const el8 = (id) => dom8.doc.getElementById(id);
+  el8("importFile").files = [{ name: "_exp_test.csv", _text: csvWithExp }];
+  el8("importFile").dispatch("change");
+  check(/导入成功/.test(el8("importResult").textContent), "导入「1 道选择题 + 1 道简答题」的小题库", el8("importResult").textContent);
+  dom8.radioState.quizScope = "all";
+  dom8.radioState.quizType = "all";
+  dom8.radioState.quizCount = "all";
+  el8("startQuizBtn").click();
+  el8("showAnswerToggle").checked = true;
+  el8("showAnswerToggle").dispatch("change");
+  const fakeBank = { questions: [
+    { id: "0001", type: "单选题", answer: "B", options: [{ key: "A", text: "甲" }] },
+    { id: "0002", type: "简答题", answer: "参考答案文本", options: [] }
+  ] };
+  answerPaper(dom8, fakeBank, ["0001", "0002"], 0);   // 两道都答错
+  el8("submitBtn").click();
+  check(/错题库（2）/.test(el8("wrongTab").textContent), "两道题进入错题库", el8("wrongTab").textContent);
+  el8("wrongTab").dispatch("click");
+  const expHtml = el8("content").innerHTML;
+  check(/解析：这里是解析内容。/.test(expHtml), "★ 选择题的文字栏显示解析内容");
+  check(!/正确答案：B/.test(expHtml), "★ 选择题不出现「正确答案：B」");
+  check(/正确答案：参考答案文本/.test(expHtml), "★ 无选项的简答题仍用文字给出正确答案");
+  check(/correct-highlight/.test(expHtml), "带解析的题同样标绿正确选项");
 
   console.log("11) 侧栏形态：自动判定 + 手动切换");
   const root = { classList: makeClassList(null) };
@@ -526,7 +558,7 @@ function main() {
   check(dom6.win.YXA_LAYOUT.pref() === "drawer", "再点切回抽屉", dom6.win.YXA_LAYOUT.pref());
   check(root.classList.contains("drawer-mode"), "切回后 html 上是抽屉形态");
   check(/切换为并排显示/.test(el6("modeToggleBtn").textContent), "按钮文案随模式变化", el6("modeToggleBtn").textContent);
-  check(/^v1\.6/.test(el6("layoutStatus").textContent), "状态行带版本号 v1.6", el6("layoutStatus").textContent);
+  check(/^v1\.7/.test(el6("layoutStatus").textContent), "状态行带版本号 v1.7", el6("layoutStatus").textContent);
 
   console.log("");
   if (failures.length) {

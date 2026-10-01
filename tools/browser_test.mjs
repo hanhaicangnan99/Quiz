@@ -1,4 +1,4 @@
-/* 真实浏览器回归测试：在 Chrome 里加载 index.html（注入临时探针），
+﻿/* 真实浏览器回归测试：在 Chrome 里加载 index.html（注入临时探针），
    用「计算后的样式」验证那些 DOM 桩测不出来的东西：
    - 抽屉按钮点开后侧栏是否真的滑出来了（transform）、遮罩是否真的出现
    - 抽屉/并排两种形态下 aside 的定位、题目是否满屏
@@ -170,7 +170,7 @@ if (narrow[0] === "NO-TITLE") {
   check(Number(value(narrow, "navMarked")) === 1, "题号导航出现 ★", value(narrow, "navMarked"));
   check(/标记题（1）/.test(value(narrow, "tabText")), "标记题页签计数更新", value(narrow, "tabText"));
   check(Number(value(narrow, "navWidth")) > 100, "抽屉里题目导航可见且有宽度", value(narrow, "navWidth"));
-  check(/^v1\.6/.test(value(narrow, "statusLine")), "状态行显示 v1.6", value(narrow, "statusLine"));
+  check(/^v1\.7/.test(value(narrow, "statusLine")), "状态行显示 v1.7", value(narrow, "statusLine"));
   check(!/PROBE-ERROR/.test(narrow.join("|")), "探针无异常", narrow.filter((l) => /ERROR/.test(l)).join(" "));
 }
 

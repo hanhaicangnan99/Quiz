@@ -1,4 +1,4 @@
-/* 乙烯答题练习（Chrome 侧载版）
+﻿/* 乙烯答题练习（Chrome 侧载版）
    由原「离线答题系统」的 5 个单文件合并而来：
    - 一份界面与判分逻辑，服务多个题库，可在侧栏自由切换；
    - 每个题库的正确/错误/未做记录、出题设置互相独立并分别保存；
@@ -17,7 +17,7 @@
   var KEY_LAST = "lastBank";
   var KEY_IMPORTED = "importedBanks";
   var GROUP_IMPORTED = "导入题库";
-  var APP_VERSION = "1.6";
+  var APP_VERSION = "1.7";
 
   var TYPE_ORDER = ["单选题", "多选题", "判断题", "填空题", "简答题", "计算题", "论述题"];
 
@@ -647,15 +647,22 @@
       var markButton = isMarkedList
         ? '<button type="button" class="unmark-btn" data-mark-qid="' + escA(q.id) + '">取消标记</button>'
         : "";
-      var answerPart = showAns
-        ? '<div class="result show answer">正确答案：' + esc(q.answer) +
-          (q.explanation ? "<br>解析：" + esc(q.explanation) : "") + "</div>"
-        : '<div class="list-hint">正确答案与解析已隐藏　' +
-          '<button type="button" class="link-btn" data-action="toggle-answers">点这里显示</button>' +
-          "（也可用侧栏的「显示答案」开关）</div>";
+      var optsHtml = listOptionsHtml(q, showAns);
+      var answerPart;
+      if (showAns) {
+        // 有选项的题：正确答案已由绿色选项表示，这里只放解析（有的话）
+        // 无选项的主观题（简答/计算）：没有可标绿的选项，仍需用文字给出正确答案
+        var lines = [];
+        if (!optsHtml.length) lines.push("正确答案：" + esc(q.answer));
+        if (q.explanation) lines.push("解析：" + esc(q.explanation));
+        answerPart = lines.length ? '<div class="result show answer">' + lines.join("<br>") + "</div>" : "";
+      } else {
+        answerPart = '<div class="list-hint">答案已隐藏　' +
+          '<button type="button" class="link-btn" data-action="toggle-answers">点这里显示</button></div>';
+      }
       return '<article class="question' + (isMarked(q) ? " marked" : "") + '" data-id="' + escA(q.id) + '">' +
         qHeadHtml(q, (idx + 1) + ". " + esc(q.question)) +
-        listOptionsHtml(q, showAns) + answerPart + markButton + "</article>";
+        optsHtml + answerPart + markButton + "</article>";
     }).join("");
   }
 
