@@ -1,0 +1,19 @@
+{
+  "name": "乙烯答题练习",
+  "short_name": "答题练习",
+  "description": "离线题库练习：危害因素辨识与风险防控、程序文件、乙烯装置操作工认定题库（中级/高级/技师），可自由切换题库并导入自己的题库。",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f7f8fb",
+  "theme_color": "#146c94",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "icons/icon192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" }
+  ]
+}

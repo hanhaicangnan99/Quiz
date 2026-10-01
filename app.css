@@ -1,0 +1,379 @@
+/* 样式取自原「离线答题系统」的内联 <style>，仅追加题库选择区样式。 */
+:root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --ink: #17202a;
+      --muted: #657387;
+      --line: #dce2ea;
+      --accent: #146c94;
+      --accent-strong: #0d4f70;
+      --ok: #1c7c54;
+      --bad: #b23b3b;
+      --warn: #a06212;
+      --soft: #eef6f9;
+      --shadow: 0 12px 28px rgba(23, 32, 42, .08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+    }
+
+    button, input, select { font: inherit; }
+
+    button {
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: .15s ease;
+      min-height: 40px;
+    }
+
+    button:hover { background: var(--accent-strong); }
+    button.secondary { background: #fff; color: var(--accent); border-color: #b9cfda; }
+    button.secondary:hover { background: var(--soft); }
+    button.danger { background: #fff; color: var(--bad); border-color: #e2b8b8; }
+    button.danger:hover { background: #fff3f3; }
+    button:disabled { opacity: .48; cursor: not-allowed; }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+    }
+
+    aside {
+      background: #ffffff;
+      border-right: 1px solid var(--line);
+      padding: 22px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-top { flex: 1; min-height: 0; overflow: auto; }
+    .sidebar-bottom {
+      border-top: 1px solid var(--line);
+      padding-top: 16px;
+      margin-top: 12px;
+      display: grid;
+      gap: 10px;
+    }
+
+    main { padding: 26px; overflow: auto; }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 800;
+    }
+
+    h1 { font-size: 18px; margin: 0; line-height: 1.2; }
+    h2 { margin: 0 0 14px; font-size: 18px; }
+    h3 { margin: 0 0 10px; font-size: 15px; }
+
+    .section {
+      border-top: 1px solid var(--line);
+      padding-top: 18px;
+      margin-top: 18px;
+    }
+
+    .hint, .small { color: var(--muted); font-size: 13px; line-height: 1.55; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fbfcfe;
+    }
+
+    .stat b { display: block; font-size: 20px; margin-bottom: 2px; }
+
+    .field { display: grid; gap: 7px; margin-top: 10px; }
+    .field label { color: var(--muted); font-size: 13px; }
+
+    .segmented { display: grid; gap: 8px; margin-top: 8px; }
+
+    .choice {
+      display: grid;
+      grid-template-columns: 20px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .choice span { font-size: 14px; overflow-wrap: anywhere; }
+    .choice input:checked+span { color: var(--accent-strong); font-weight: 700; }
+
+    .quantity-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+    .rule-list { display: grid; gap: 8px; margin-top: 10px; }
+
+    .rule-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: #fbfcfe;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .rule-item button { min-height: 30px; padding: 4px 8px; }
+
+    .check-line { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--ink); font-size: 14px; }
+
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .tabs {
+      display: inline-flex;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .tab { color: var(--ink); background: #fff; border: 0; border-radius: 0; min-width: 94px; }
+    .tab.active { background: var(--accent); color: #fff; }
+
+    .summary { color: var(--muted); font-size: 14px; }
+
+    .empty {
+      min-height: 420px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 24px;
+    }
+
+    .paper { display: grid; gap: 14px; }
+
+    .question {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .q-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+    .q-title { font-weight: 700; line-height: 1.55; overflow-wrap: anywhere; }
+
+    .badge {
+      flex: 0 0 auto;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 12px;
+      color: var(--accent-strong);
+      background: var(--soft);
+      border: 1px solid #c8e2eb;
+    }
+
+    .options { display: grid; gap: 8px; }
+
+    .option {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr);
+      gap: 9px;
+      align-items: start;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+    .option input { margin-top: 3px; }
+    .option span { overflow-wrap: anywhere; line-height: 1.5; }
+    .option.correct-highlight { border-color: var(--ok); background: #eef9f3; }
+    .option.correct-highlight span { color: var(--ok); font-weight: 700; }
+
+    .answer-text {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 10px 12px;
+      min-height: 44px;
+    }
+
+    .result { margin-top: 12px; padding: 10px 12px; border-radius: 8px; line-height: 1.55; display: none; }
+    .result.show { display: block; }
+    .result.ok { background: #eef9f3; border: 1px solid #bfe3ce; color: var(--ok); }
+    .result.bad { background: #fff3f3; border: 1px solid #efcaca; color: var(--bad); }
+    .result.answer { background: var(--soft); border: 1px solid #c8e2eb; color: var(--accent-strong); }
+
+    .q-nav-list { display: flex; flex-wrap: wrap; gap: 6px; max-height: 280px; overflow: auto; margin-top: 10px; }
+    .q-nav-item {
+      width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+      display: grid; place-items: center; font-size: 13px; font-weight: 700;
+      border: 2px solid var(--line); background: #fff; color: var(--muted);
+      transition: .12s;
+    }
+    .q-nav-item:hover { border-color: var(--accent); color: var(--accent); background: var(--soft); }
+    .q-nav-item.correct { border-color: var(--ok); background: #eef9f3; color: var(--ok); }
+    .q-nav-item.wrong { border-color: var(--bad); background: #fff3f3; color: var(--bad); }
+    .q-nav-item.answered { border-color: var(--accent); background: var(--soft); color: var(--accent); }
+    .q-nav-item.pending { border-color: #c0c8d0; background: #fff; color: #a0a8b0; }
+
+    .score {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+      display: none;
+    }
+
+    .score.show { display: block; }
+    .score b { color: var(--accent-strong); }
+
+    #submitBtn {
+      width: 100%;
+      padding: 12px 20px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 0.5px;
+    }
+
+    #paperSummary { color: var(--muted); font-size: 13px; text-align: center; }
+
+    .actions { display: grid; gap: 10px; margin-top: 14px; }
+
+    .custom-row { display: none; margin-top: 6px; }
+    .custom-row.show { display: block; }
+    .custom-row input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 8px;
+      background: #fff;
+    }
+
+    .import-section { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 14px; }
+    .import-section h3 { margin-bottom: 6px; }
+    .import-section .hint { margin-bottom: 10px; }
+    #importFile { display: none; }
+    .file-drop { border: 2px dashed var(--line); border-radius: 8px; padding: 18px; text-align: center; cursor: pointer; transition: .15s; background: #fbfcfe; font-size: 13px; color: var(--muted); }
+    .file-drop:hover { border-color: var(--accent); background: var(--soft); }
+    .file-drop.dragover { border-color: var(--accent); background: var(--soft); color: var(--accent); }
+    #importResult { font-size: 12px; color: var(--ok); margin-top: 6px; min-height: 18px; }
+
+    .mobile-submit-bar {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--panel);
+      border-top: 1px solid var(--line);
+      padding: 10px 18px;
+      z-index: 100;
+      gap: 10px;
+      align-items: center;
+      box-shadow: 0 -4px 12px rgba(23,32,42,.08);
+    }
+    .mobile-submit-bar button { flex: 1; }
+    .mobile-submit-bar .summary { font-size: 12px; color: var(--muted); flex: 0 0 auto; }
+
+    @media (max-width: 860px) {
+      .app { grid-template-columns: 1fr; }
+      aside {
+        position: static;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+        display: block;
+      }
+      .sidebar-bottom { position: static; }
+      main { padding: 18px; padding-bottom: 70px; }
+      .topbar { align-items: stretch; }
+      .tabs { width: 100%; }
+      .tab { flex: 1; min-width: 0; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .mobile-submit-bar { display: flex; }
+    }
+
+    /* ===== 以下为合并版 App 新增：题库选择 / 科目筛选 ===== */
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--ink);
+      padding: 9px 10px;
+      min-height: 40px;
+      font: inherit;
+    }
+    select:focus { outline: 2px solid rgba(20, 108, 148, .22); border-color: var(--accent); }
+
+    .bank-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .bank-chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 2px 9px;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--soft);
+    }
+    .bank-desc { color: var(--muted); font-size: 13px; line-height: 1.55; margin-top: 8px; }
+    .field select + .hint { margin-top: 6px; }
+
+    /* 导入区默认折叠，给「出题设置」留出更多竖向空间 */
+    .import-section summary {
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ink);
+      padding: 4px 0;
+      list-style: none;
+    }
+    .import-section summary::-webkit-details-marker { display: none; }
+    .import-section summary::before { content: "▸ "; color: var(--accent); font-weight: 700; }
+    .import-section details[open] summary::before { content: "▾ "; }
+    .import-section details[open] summary { margin-bottom: 6px; }

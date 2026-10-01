@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>乙烯答题练习</title>
+  <meta name="description" content="离线题库练习：危害因素辨识与风险防控、程序文件、乙烯装置操作工认定题库（中级/高级/技师）">
+  <meta name="theme-color" content="#146c94">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="app.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon128.png">
+  <link rel="apple-touch-icon" href="icons/icon192.png">
+</head>
+<body>
+  <div class="mobile-submit-bar">
+    <button id="submitBtnMobile" type="button" disabled>提交判分</button>
+    <div id="paperSummaryMobile" class="summary">请选择题型和数量后开始出题。</div>
+  </div>
+
+  <div class="app">
+    <aside>
+      <div class="sidebar-top">
+        <div class="brand">
+          <div class="brand-mark">答</div>
+          <h1 id="appTitle">乙烯答题练习</h1>
+        </div>
+
+        <section>
+          <h2>题库</h2>
+          <div class="field">
+            <label for="bankSelect">选择题库</label>
+            <select id="bankSelect"></select>
+          </div>
+          <div class="bank-meta" id="bankMeta"></div>
+          <div class="bank-desc" id="bankDesc" title=""></div>
+          <div class="actions" style="margin-top:10px;">
+            <button id="installBtn" class="secondary" type="button" style="display:none;width:100%;">安装到桌面 / 手机</button>
+            <button id="deleteBankBtn" class="danger" type="button" style="display:none;">删除此导入题库</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2>题库概况</h2>
+          <div class="hint">题库已内置，共 <b id="bankSize">0</b> 题，无需导入文件即可练习。</div>
+          <div class="stats">
+            <div class="stat"><b id="totalCount">0</b><span class="small">题库总题数</span></div>
+            <div class="stat"><b id="correctCount">0</b><span class="small">正确数量</span></div>
+            <div class="stat"><b id="wrongCount">0</b><span class="small">错题数量</span></div>
+            <div class="stat"><b id="undoneCount">0</b><span class="small">未做数量</span></div>
+          </div>
+        </section>
+
+        <section class="section" id="questionNavSection" style="display:none;">
+          <h2>题目导航</h2>
+          <div id="questionNavSummary" class="hint" style="margin-bottom:8px;"></div>
+          <div id="questionNavList" class="q-nav-list"></div>
+        </section>
+
+        <section class="section">
+          <h2>出题设置</h2>
+          <div class="field">
+            <label>练习模式</label>
+            <div id="scopeChoices" class="segmented"></div>
+          </div>
+          <div class="field">
+            <label>试题类型</label>
+            <div id="typeChoices" class="segmented"></div>
+          </div>
+          <div class="field" id="subjectField" style="display:none;">
+            <label for="subjectSelect">科目 / 制度</label>
+            <select id="subjectSelect"></select>
+          </div>
+          <div class="field">
+            <label>试题数量</label>
+            <div class="quantity-grid">
+              <label class="choice"><input type="radio" name="quizCount" value="30" checked><span>30</span></label>
+              <label class="choice"><input type="radio" name="quizCount" value="50"><span>50</span></label>
+              <label class="choice"><input type="radio" name="quizCount" value="100"><span>100</span></label>
+              <label class="choice"><input type="radio" name="quizCount" value="custom"><span>自定义</span></label>
+              <label class="choice"><input type="radio" name="quizCount" value="all"><span>全部刷完</span></label>
+            </div>
+            <div id="customCountRow" class="custom-row">
+              <input id="customCount" type="number" min="1" value="30">
+            </div>
+          </div>
+          <div class="actions">
+            <button id="addRuleBtn" class="secondary" type="button">添加规则拼题</button>
+          </div>
+          <div id="ruleList" class="rule-list"></div>
+          <div class="field">
+            <label>出题模式</label>
+            <div class="quantity-grid">
+              <label class="choice"><input type="radio" name="orderMode" value="sequential" checked><span>顺序练习</span></label>
+              <label class="choice"><input type="radio" name="orderMode" value="random"><span>随机出题</span></label>
+            </div>
+          </div>
+          <label class="check-line">
+            <input id="showAnswerToggle" type="checkbox">
+            <span>显示答案</span>
+          </label>
+          <div class="actions">
+            <button id="startQuizBtn" type="button">开始出题</button>
+            <button id="clearWrongBtn" class="danger" type="button">清空错题库</button>
+            <button id="resetAllBtn" class="danger" type="button">全部重置(变未做)</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="import-section">
+        <details id="importDetails">
+          <summary>导入 / 导出题库</summary>
+          <div class="hint">点击或拖入 xlsx / xls / csv 文件，解析后作为<strong>新的题库</strong>加入上面的列表；也可把当前题库导出为 JSON 备份。导入的题库不影响内置题库。</div>
+          <input id="importFile" type="file" accept=".xlsx,.xls,.csv">
+          <div class="file-drop" id="fileDrop">点击选择 xlsx/xls/csv 文件 或拖拽至此处</div>
+          <div id="importResult"></div>
+          <div class="actions" style="margin-top:10px;">
+            <button id="exportBankBtn" class="secondary" type="button" style="width:100%;">导出当前题库 JSON</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="sidebar-bottom">
+        <button id="submitBtn" type="button" disabled>提交判分</button>
+        <div id="paperSummary" class="summary">请选择题型和数量后开始出题。</div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div class="tabs" role="tablist">
+          <button id="paperTab" class="tab active" type="button">答题</button>
+          <button id="wrongTab" class="tab" type="button">错题库</button>
+        </div>
+      </div>
+
+      <div id="scoreBox" class="score"></div>
+      <div id="content" class="paper">
+        <div class="empty">选择出题设置后，点击"开始出题"即可作答。</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="banks/index.js"></script>
+  <script src="banks/wf.js"></script>
+  <script src="banks/cx.js"></script>
+  <script src="banks/rd-zj.js"></script>
+  <script src="banks/rd-gj.js"></script>
+  <script src="banks/rd-js.js"></script>
+  <script src="vendor/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+  <script src="pwa.js"></script>
+</body>
+</html>
