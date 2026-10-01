@@ -136,7 +136,7 @@ if (manifest) {
   if (!sw || !fs.existsSync(path.join(APP, sw))) fail(`manifest 的 service_worker 缺失：${sw}`);
 }
 
-for (const script of ["app.js", "background.js", "pwa.js", "sw.js", ...bankFiles.map((f) => "banks/" + f)]) {
+for (const script of ["app.js", "background.js", "pwa.js", "layout.js", "sw.js", ...bankFiles.map((f) => "banks/" + f)]) {
   const p = path.join(APP, script);
   if (!fs.existsSync(p)) { fail(`缺少脚本 ${script}`); continue; }
   try {
@@ -158,7 +158,7 @@ if (/(src|href)\s*=\s*["']https?:/i.test(html)) fail("index.html 引用了远程
 for (const m of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
   const rel = m[1];
   if (/^https?:/i.test(rel)) continue;
-  if (!fs.existsSync(path.join(APP, rel))) fail(`index.html 引用的文件不存在：${rel}`);
+  if (!fs.existsSync(path.join(APP, rel.replace(/\?.*$/, "")))) fail(`index.html 引用的文件不存在：${rel}`);
 }
 
 /* ---------------------------------------------------------------- PWA / GitHub Pages */
@@ -206,22 +206,53 @@ if (!/drawer-open/.test(readText(path.join(APP, "app.css")))) fail("app.css 缺�
 
 const swSource = readText(path.join(APP, "sw.js"));
 const swListMatch = /const PRECACHE = \[([\s\S]*?)\]/.exec(swSource);
+let precache = [];
 if (!swListMatch) {
   fail("sw.js 里找不到 PRECACHE 列表");
 } else {
-  const entries = [...swListMatch[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-  if (!entries.length) fail("sw.js 的 PRECACHE 为空");
-  for (const rel of entries) {
-    if (!fs.existsSync(path.join(APP, rel.replace(/^\.\//, "")))) fail(`sw.js 预缓存的文件不存在：${rel}`);
+  precache = [...swListMatch[1].matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  if (!precache.length) fail("sw.js 的 PRECACHE 为空");
+  for (const rel of precache) {
+    if (!fs.existsSync(path.join(APP, rel.replace(/^\.\//, "").replace(/\?.*$/, "")))) {
+      fail(`sw.js 预缓存的文件不存在：${rel}`);
+    }
   }
-  for (const rel of ["index.html", "app.css", "app.js", "pwa.js", "manifest.webmanifest"]) {
-    if (!entries.includes("./" + rel)) fail(`sw.js 预缓存缺少 ${rel}`);
+  for (const rel of ["index.html", "app.css", "app.js", "pwa.js", "layout.js", "manifest.webmanifest"]) {
+    if (!precache.some((p) => p.replace(/^\.\//, "").replace(/\?.*$/, "") === rel)) {
+      fail(`sw.js 预缓存缺少 ${rel}`);
+    }
   }
   for (const bank of banks) {
-    if (!entries.includes(`./banks/${bank.id}.js`)) fail(`sw.js 预缓存缺少 banks/${bank.id}.js`);
+    if (!precache.includes(`./banks/${bank.id}.js`)) fail(`sw.js 预缓存缺少 banks/${bank.id}.js`);
   }
-  if (!entries.includes("./vendor/xlsx.full.min.js")) fail("sw.js 预缓存缺少 vendor/xlsx.full.min.js");
-  console.log(`  sw.js 预缓存 ${entries.length} 个文件，全部存在`);
+  if (!precache.includes("./vendor/xlsx.full.min.js")) fail("sw.js 预缓存缺少 vendor/xlsx.full.min.js");
+  console.log(`  sw.js 预缓存 ${precache.length} 个文件，全部存在`);
+}
+
+// index.html 里引用的本地文件必须与 sw.js 的预缓存清单一致（否则离线会 503 / 更新会不生效）
+const htmlRefs = [...html.matchAll(/(?:src|href)="([^"]+)"/g)]
+  .map((m) => m[1])
+  .filter((rel) => !/^https?:/i.test(rel));
+const missingInPrecache = htmlRefs.filter((rel) => {
+  const norm = rel.replace(/^\.\//, "");
+  return !precache.some((p) => p.replace(/^\.\//, "") === norm);
+});
+if (missingInPrecache.length) {
+  fail(`index.html 引用了未加入 sw.js 预缓存的文件（离线会失败）：${missingInPrecache.join(", ")}`);
+} else {
+  console.log(`  index.html 的 ${htmlRefs.length} 个本地引用都在 sw.js 预缓存里`);
+}
+
+// 版本号必须三处一致：index.html 的 ?v=、sw.js 的 ?v=、app.js 的 APP_VERSION
+const appVer = /var APP_VERSION = "([^"]+)"/.exec(appSource);
+const htmlVers = new Set([...html.matchAll(/\?v=([0-9.]+)/g)].map((m) => m[1]));
+const swVers = new Set([...swSource.matchAll(/\?v=([0-9.]+)/g)].map((m) => m[1]));
+if (!appVer) fail("app.js 里找不到 APP_VERSION");
+const versions = new Set([...htmlVers, ...swVers, appVer ? appVer[1] : ""]);
+if (versions.size !== 1) {
+  fail(`版本号不一致：index.html=${[...htmlVers].join("/") || "无"}  sw.js=${[...swVers].join("/") || "无"}  app.js=${appVer ? appVer[1] : "无"}`);
+} else {
+  console.log(`  版本号三处一致：v${[...versions][0]}`);
 }
 
 for (const rel of [".nojekyll", ".gitignore"]) {

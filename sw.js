@@ -1,13 +1,16 @@
 /* 离线缓存（PWA）。只在 https/http 下由 pwa.js 注册，扩展页不会用到。
-   改了 index.html / app.js / banks/* 之后，把 CACHE 版本号 +1，用户下次打开就会拿到新版。 */
-const CACHE = "yxa-v3";
+   改了 index.html / app.css / app.js / layout.js 之后：
+   1) 把下面的 CACHE 版本号 +1；
+   2) 把 PRECACHE 里带 ?v= 的条目和 index.html 里的 ?v= 改成同一个新版本号（tools/verify_banks.mjs 会检查两者是否一致）。 */
+const CACHE = "yxa-v4";
 
 const PRECACHE = [
   "./index.html",
-  "./app.css",
-  "./app.js",
-  "./pwa.js",
-  "./manifest.webmanifest",
+  "./app.css?v=1.5",
+  "./app.js?v=1.5",
+  "./pwa.js?v=1.5",
+  "./layout.js?v=1.5",
+  "./manifest.webmanifest?v=1.5",
   "./icons/icon16.png",
   "./icons/icon48.png",
   "./icons/icon128.png",
@@ -23,12 +26,27 @@ const PRECACHE = [
   "./vendor/xlsx.full.min.js"
 ];
 
+/* 应用外壳（html/css/js/json）走网络时不使用 HTTP 缓存，避免拿到旧版本；
+   离线时再回落到下面缓存好的副本。 */
+function isShell(url) {
+  return /\.(html|css|js|json|webmanifest)$/i.test(url.pathname) &&
+    !/\/banks\//.test(url.pathname) &&
+    !/\/vendor\//.test(url.pathname);
+}
+
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.all(PRECACHE.map(async (url) => {
+      try {
+        const resp = await fetch(url, { cache: "no-store" });
+        if (resp && resp.ok) await cache.put(url, resp);
+      } catch (err) {
+        // 单个文件失败不影响整体安装，下次访问会由 fetch 兜底
+      }
+    }));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("activate", (event) => {
@@ -68,8 +86,10 @@ async function cacheFirst(req) {
 }
 
 async function networkFirst(req, fallback) {
+  const url = new URL(req.url);
+  const opts = isShell(url) ? { cache: "no-store" } : {};
   try {
-    const resp = await fetch(req);
+    const resp = await fetch(req, opts);
     if (resp && resp.ok) {
       const cache = await caches.open(CACHE);
       cache.put(req, resp.clone());

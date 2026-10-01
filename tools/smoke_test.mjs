@@ -131,7 +131,10 @@ function createDom(localStorageData) {
     alert() {},
     confirm: () => true,
     scrollTo() {},
-    setTimeout: (fn) => { fn(); return 0; }
+    setTimeout: (fn) => { fn(); return 0; },
+    _listeners: {},
+    addEventListener(type, fn) { (win._listeners[type] = win._listeners[type] || []).push(fn); },
+    _fire(type, ev) { (win._listeners[type] || []).forEach((fn) => fn(ev || {})); }
   };
   win.window = win;
   return { doc, win, radioState, checkedByQid, store };
@@ -492,6 +495,36 @@ function main() {
   const markedHtml2 = el6("content").innerHTML;
   check(/correct-highlight/.test(markedHtml2), "标记题列表也标绿正确选项");
   check(/result show answer/.test(markedHtml2), "标记题列表显示正确答案");
+
+  console.log("11) 侧栏形态：自动判定 + 手动切换");
+  const root = { classList: makeClassList(null) };
+  dom6.doc.documentElement = root;
+  // 桩里没有 layout.js（head 脚本），这里装一个同样语义的实现
+  dom6.win.YXA_LAYOUT = {
+    _pref: "auto",
+    pref() { return this._pref; },
+    setPref(v) { this._pref = v; },
+    autoDrawer() { return true; },
+    apply() {
+      const drawer = this._pref === "drawer" || (this._pref === "auto" && this.autoDrawer());
+      root.classList.toggle("drawer-mode", drawer);
+      root.classList.toggle("side-mode", !drawer);
+      return drawer;
+    }
+  };
+  dom6.win.YXA_LAYOUT.apply();
+  check(root.classList.contains("drawer-mode"), "自动判定为抽屉模式");
+
+  el6("modeToggleBtn").dispatch("click");       // 自动(抽屉) → 手动并排
+  check(dom6.win.YXA_LAYOUT.pref() === "side", "点切换后记住「并排」选择", dom6.win.YXA_LAYOUT.pref());
+  check(root.classList.contains("side-mode"), "切换后 html 上是并排形态");
+  check(/手动·并排/.test(el6("layoutStatus").textContent), "状态行标明当前是手动·并排", el6("layoutStatus").textContent);
+
+  el6("modeToggleBtn").dispatch("click");       // 手动并排 → 抽屉
+  check(dom6.win.YXA_LAYOUT.pref() === "drawer", "再点切回抽屉", dom6.win.YXA_LAYOUT.pref());
+  check(root.classList.contains("drawer-mode"), "切回后 html 上是抽屉形态");
+  check(/切换为并排显示/.test(el6("modeToggleBtn").textContent), "按钮文案随模式变化", el6("modeToggleBtn").textContent);
+  check(/^v1\.5/.test(el6("layoutStatus").textContent), "状态行带版本号 v1.5", el6("layoutStatus").textContent);
 
   console.log("");
   if (failures.length) {

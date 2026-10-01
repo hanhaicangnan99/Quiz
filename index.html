@@ -9,10 +9,12 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="app.css">
-  <link rel="manifest" href="manifest.webmanifest">
+  <!-- 版本号：改样式/脚本时同步改这里和 sw.js 里的 ?v=，避免浏览器拿到旧缓存 -->
+  <link rel="stylesheet" href="app.css?v=1.5">
+  <link rel="manifest" href="manifest.webmanifest?v=1.5">
   <link rel="icon" href="icons/icon128.png">
   <link rel="apple-touch-icon" href="icons/icon192.png">
+  <script src="layout.js?v=1.5"></script>
 </head>
 <body>
   <div class="mobile-submit-bar">
@@ -130,6 +132,8 @@
       <div class="sidebar-bottom">
         <button id="submitBtn" type="button" disabled>提交判分</button>
         <div id="paperSummary" class="summary">请选择题型和数量后开始出题。</div>
+        <button id="modeToggleBtn" class="secondary" type="button" style="width:100%;">切换显示方式</button>
+        <div id="layoutStatus" class="app-version"></div>
       </div>
     </aside>
 
@@ -156,7 +160,7 @@
   <script src="banks/rd-gj.js"></script>
   <script src="banks/rd-js.js"></script>
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="app.js"></script>
-  <script src="pwa.js"></script>
+  <script src="app.js?v=1.5"></script>
+  <script src="pwa.js?v=1.5"></script>
 </body>
 </html>

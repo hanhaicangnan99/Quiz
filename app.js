@@ -17,6 +17,7 @@
   var KEY_LAST = "lastBank";
   var KEY_IMPORTED = "importedBanks";
   var GROUP_IMPORTED = "导入题库";
+  var APP_VERSION = "1.5";
 
   var TYPE_ORDER = ["单选题", "多选题", "判断题", "填空题", "简答题", "计算题", "论述题"];
 
@@ -229,6 +230,7 @@
     wrongTab: E("wrongTab"), markedTab: E("markedTab"), paperSummary: E("paperSummary"),
     clearMarkBtn: E("clearMarkBtn"),
     drawerBtn: E("drawerBtn"), drawerCloseBtn: E("drawerCloseBtn"), drawerBackdrop: E("drawerBackdrop"),
+    modeToggleBtn: E("modeToggleBtn"), layoutStatus: E("layoutStatus"),
     scoreBox: E("scoreBox"), content: E("content"),
     submitBtn: E("submitBtn"), submitBtnMobile: E("submitBtnMobile"),
     paperSummaryMobile: E("paperSummaryMobile"),
@@ -828,6 +830,48 @@
     if (els.markedTab) els.markedTab.classList.toggle("active", t === "marked");
   }
 
+  /* ============================================================ 侧栏形态（抽屉 / 并排） */
+
+  function layoutApi() {
+    return window.YXA_LAYOUT || null;
+  }
+
+  function drawerModeActive() {
+    var root = document.documentElement;
+    return !!(root && root.classList && root.classList.contains("drawer-mode"));
+  }
+
+  function updateLayoutStatus() {
+    if (!els.layoutStatus) return;
+    var w = window.innerWidth || 0, h = window.innerHeight || 0;
+    var coarse = false;
+    try { coarse = window.matchMedia("(pointer: coarse)").matches; } catch (e) {}
+    var pref = layoutApi() ? layoutApi().pref() : "auto";
+    var prefLabel = pref === "auto" ? "自动" : (pref === "drawer" ? "手动·抽屉" : "手动·并排");
+    els.layoutStatus.textContent = "v" + APP_VERSION + " · 视口 " + w + "×" + h +
+      " · 指针" + (coarse ? "粗(触屏)" : "细(鼠标)") + " · " + prefLabel +
+      " · " + (drawerModeActive() ? "抽屉" : "并排");
+  }
+
+  function applyLayoutMode() {
+    var drawer = layoutApi() ? layoutApi().apply() : drawerModeActive();
+    if (!drawer) closeDrawer();
+    if (els.modeToggleBtn) {
+      els.modeToggleBtn.textContent = drawer ? "切换为并排显示" : "切换为抽屉显示（题目满屏）";
+    }
+    updateLayoutStatus();
+    return drawer;
+  }
+
+  function toggleLayoutMode() {
+    var api = layoutApi();
+    var wantDrawer = !drawerModeActive();
+    if (api) api.setPref(wantDrawer ? "drawer" : "side");
+    applyLayoutMode();
+    if (wantDrawer) openDrawer();
+    else window.scrollTo(0, 0);
+  }
+
   /* ============================================================ 侧栏抽屉（平板/手机） */
 
   function openDrawer() {
@@ -1162,8 +1206,22 @@
     if (els.drawerBtn) els.drawerBtn.addEventListener("click", toggleDrawer);
     if (els.drawerCloseBtn) els.drawerCloseBtn.addEventListener("click", closeDrawer);
     if (els.drawerBackdrop) els.drawerBackdrop.addEventListener("click", closeDrawer);
+    if (els.modeToggleBtn) els.modeToggleBtn.addEventListener("click", toggleLayoutMode);
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape" && isDrawerOpen()) closeDrawer();
+    });
+
+    /* 转动屏幕/改窗口大小时重算（自动模式）；状态行随时更新，便于排查 */
+    var resizeTimer = null;
+    window.addEventListener("resize", function () {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        resizeTimer = null;
+        applyLayoutMode();
+      }, 150);
+    });
+    window.addEventListener("orientationchange", function () {
+      setTimeout(applyLayoutMode, 350);
     });
 
     E("questionNavList").addEventListener("click", function (e) {
@@ -1209,6 +1267,7 @@
     buildBankList();
     renderBankSelect();
     wireEvents();
+    applyLayoutMode();
     var last = lsGet(KEY_LAST, null);
     if (!last || !BANKS[last]) last = BANK_LIST[0].id;
     activate(last);

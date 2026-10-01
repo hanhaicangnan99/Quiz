@@ -435,83 +435,95 @@
     }
     .link-btn:hover { background: none; color: var(--accent-strong); }
 
-    /* ===== 平板抽屉：小按钮呼出整个侧栏，不挤压题目 ===== */
+    /* ===== 侧栏两种形态：抽屉（浮层，题目满屏）/ 并排 =====
+       形态由 layout.js 打在 <html> 上的 drawer-mode / side-mode 类决定，
+       并可被用户在侧栏底部手动切换（记住选择），不再只靠媒体查询判断宽度。 */
     .drawer-btn, .drawer-close, .drawer-backdrop { display: none; }
 
-    @media (max-width: 1180px), (max-width: 1440px) and (pointer: coarse) {
-      .app { grid-template-columns: 1fr; }
+    /* 并排形态：窄屏时侧栏跟着变窄，尽量少挤占题目 */
+    html.side-mode .app { grid-template-columns: min(320px, 40vw) minmax(0, 1fr); }
 
-      aside {
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        width: min(88vw, 380px);
-        height: auto;
-        z-index: 130;
-        display: flex;
-        border-right: 1px solid var(--line);
-        border-bottom: 0;
-        box-shadow: 0 0 34px rgba(23, 32, 42, .24);
-        transform: translateX(-102%);
-        transition: transform .22s ease;
-        will-change: transform;
-      }
-      body.drawer-open aside { transform: translateX(0); }
-      body.drawer-open { overflow: hidden; }
+    html.drawer-mode .app { grid-template-columns: 1fr; }
 
-      body.drawer-open .drawer-backdrop {
-        display: block;
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        background: rgba(23, 32, 42, .42);
-        z-index: 125;
-      }
+    html.drawer-mode aside {
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: min(88vw, 380px);
+      height: auto;
+      z-index: 130;
+      display: flex;
+      border-right: 1px solid var(--line);
+      border-bottom: 0;
+      box-shadow: 0 0 34px rgba(23, 32, 42, .24);
+      transform: translateX(-102%);
+      transition: transform .22s ease;
+      will-change: transform;
+    }
+    html.drawer-mode.drawer-open aside { transform: translateX(0); }
+    html.drawer-mode.drawer-open { overflow: hidden; }
 
-      .drawer-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        position: fixed;
-        left: 16px;
-        bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-        z-index: 120;
-        border-radius: 999px;
-        padding: 0 18px;
-        min-height: 48px;
-        font-size: 14px;
-        font-weight: 700;
-        box-shadow: 0 10px 22px rgba(23, 32, 42, .28);
-      }
+    html.drawer-mode.drawer-open .drawer-backdrop {
+      display: block;
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background: rgba(23, 32, 42, .42);
+      z-index: 125;
+    }
 
-      .drawer-close {
-        display: grid;
-        place-items: center;
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        z-index: 2;
-        width: 38px;
-        height: 38px;
-        min-height: 38px;
-        padding: 0;
-        border-radius: 50%;
-        font-size: 15px;
-        color: var(--muted);
-        background: #fff;
-        border: 1px solid var(--line);
-      }
+    html.drawer-mode .drawer-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      position: fixed;
+      left: 16px;
+      bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+      z-index: 120;
+      border-radius: 999px;
+      padding: 0 18px;
+      min-height: 48px;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 10px 22px rgba(23, 32, 42, .28);
+    }
 
-      .brand { padding-right: 46px; }
-      .sidebar-bottom { position: static; }
-      main { padding: 18px; padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
-      .topbar { align-items: stretch; }
-      .tabs { width: 100%; }
-      .tab { flex: 1; min-width: 0; padding-left: 8px; padding-right: 8px; }
-      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .mobile-submit-bar { display: flex; }
-      .q-nav-list { max-height: 42vh; }
+    html.drawer-mode .drawer-close {
+      display: grid;
+      place-items: center;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 2;
+      width: 38px;
+      height: 38px;
+      min-height: 38px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 15px;
+      color: var(--muted);
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+
+    html.drawer-mode .brand { padding-right: 46px; }
+    html.drawer-mode .sidebar-bottom { position: static; }
+    html.drawer-mode main { padding: 18px; padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+    html.drawer-mode .topbar { align-items: stretch; }
+    html.drawer-mode .tabs { width: 100%; }
+    html.drawer-mode .tab { flex: 1; min-width: 0; padding-left: 8px; padding-right: 8px; }
+    html.drawer-mode .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    html.drawer-mode .mobile-submit-bar { display: flex; }
+    html.drawer-mode .q-nav-list { max-height: 42vh; }
+
+    /* 侧栏底部的版本/视口诊断信息 */
+    .app-version {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+      text-align: center;
+      word-break: break-word;
     }
