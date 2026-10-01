@@ -17,7 +17,7 @@
   var KEY_LAST = "lastBank";
   var KEY_IMPORTED = "importedBanks";
   var GROUP_IMPORTED = "导入题库";
-  var APP_VERSION = "1.5";
+  var APP_VERSION = "1.6";
 
   var TYPE_ORDER = ["单选题", "多选题", "判断题", "填空题", "简答题", "计算题", "论述题"];
 
@@ -874,16 +874,21 @@
 
   /* ============================================================ 侧栏抽屉（平板/手机） */
 
+  /* 抽屉开合状态统一放在 <html> 上：CSS 里用的是 html.drawer-mode.drawer-open */
+  function uiRoot() {
+    return document.documentElement || document.body;
+  }
+
   function openDrawer() {
-    document.body.classList.add("drawer-open");
+    uiRoot().classList.add("drawer-open");
   }
 
   function closeDrawer() {
-    document.body.classList.remove("drawer-open");
+    uiRoot().classList.remove("drawer-open");
   }
 
   function isDrawerOpen() {
-    return document.body.classList.contains("drawer-open");
+    return uiRoot().classList.contains("drawer-open");
   }
 
   function toggleDrawer() {

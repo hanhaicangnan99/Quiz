@@ -160,8 +160,9 @@ git -c http.proxy=http://127.0.0.1:7890 push -u origin main   # 不需要代理�
   vendor/xlsx.full.min.js   SheetJS 0.20.2（本地副本，导入 xlsx/xls 用；Apache-2.0，版权归 SheetJS LLC）
   icons/                 图标（16/48/128 扩展用；192/512/512-maskable PWA 用）
   tools/extract_banks.py    从源 HTML 生成 banks/*.js
-  tools/verify_banks.mjs    静态校验：题号唯一、答案与选项匹配、无残留标签、CSP/离线清单/密钥泄漏
-  tools/smoke_test.mjs      运行时冒烟测试：启动/出题/判分/切库/清错题/重开保留进度/导入 xlsx+csv
+  tools/verify_banks.mjs    静态校验：题号唯一、答案与选项匹配、无残留标签、CSP/离线清单/版本号一致性/密钥泄漏
+  tools/smoke_test.mjs      运行时冒烟测试（DOM 桩）：启动/出题/判分/切库/标记/显示答案/抽屉逻辑/导入 xlsx+csv
+  tools/browser_test.mjs    真实浏览器回归测试：用计算后的样式验证抽屉真的滑出、遮罩出现、并排/抽屉形态、标记样式
   tools/make_icons.py       生成全部图标
   tools/extract-report.txt  最近一次题库生成的统计与异常清单
 ```
@@ -170,11 +171,15 @@ git -c http.proxy=http://127.0.0.1:7890 push -u origin main   # 不需要代理�
 
 ```powershell
 cd 乙烯答题App
-node tools\verify_banks.mjs     # 题库、页面、离线清单、密钥泄漏 静态校验
-node tools\smoke_test.mjs       # 完整流程冒烟测试
+node tools\verify_banks.mjs     # 题库、页面、离线清单、版本号、密钥泄漏 静态校验
+node tools\smoke_test.mjs       # 逻辑冒烟测试（不依赖浏览器）
+node tools\browser_test.mjs     # 真实 Chrome 回归测试（样式/布局类问题靠它兜底）
 python tools\extract_banks.py   # 重新生成题库（源 HTML 有更新时）
 python tools\make_icons.py      # 重新生成图标
 ```
+
+> 改动样式或布局后**一定要跑一次 `tools\browser_test.mjs`**：DOM 桩测不出 CSS 选择器和元素对不上的问题
+> （例如抽屉开合状态挂在哪个元素上），这类 bug 只有真实浏览器能发现。
 
 > 上一级目录里的 `乙烯答题App-扩展密钥.pem` 是这个扩展的自签名私钥（扩展 ID 由它决定），**故意放在本目录之外、且已被 `.gitignore` 排除**，不会随仓库公开。
 > 只有在需要重新打包成 `.crx`（`chrome.exe --pack-extension=... --pack-extension-key=...`）时才会用到；平时侧载不需要它。

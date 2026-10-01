@@ -1,16 +1,16 @@
-/* 离线缓存（PWA）。只在 https/http 下由 pwa.js 注册，扩展页不会用到。
+﻿/* 离线缓存（PWA）。只在 https/http 下由 pwa.js 注册，扩展页不会用到。
    改了 index.html / app.css / app.js / layout.js 之后：
    1) 把下面的 CACHE 版本号 +1；
    2) 把 PRECACHE 里带 ?v= 的条目和 index.html 里的 ?v= 改成同一个新版本号（tools/verify_banks.mjs 会检查两者是否一致）。 */
-const CACHE = "yxa-v4";
+const CACHE = "yxa-v5";
 
 const PRECACHE = [
   "./index.html",
-  "./app.css?v=1.5",
-  "./app.js?v=1.5",
-  "./pwa.js?v=1.5",
-  "./layout.js?v=1.5",
-  "./manifest.webmanifest?v=1.5",
+  "./app.css?v=1.6",
+  "./app.js?v=1.6",
+  "./pwa.js?v=1.6",
+  "./layout.js?v=1.6",
+  "./manifest.webmanifest?v=1.6",
   "./icons/icon16.png",
   "./icons/icon48.png",
   "./icons/icon128.png",

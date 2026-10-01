@@ -1,4 +1,4 @@
-/* 运行时冒烟测试：用最小 DOM 桩加载真实的 app.js，验证启动、切库、出题、
+﻿/* 运行时冒烟测试：用最小 DOM 桩加载真实的 app.js，验证启动、切库、出题、
    判分、错题流转与「重新打开后进度保留」等关键路径。
    用法（在 乙烯答题App 目录下）：node tools/smoke_test.mjs
    这是开发期自检工具，不参与扩展运行时。 */
@@ -85,6 +85,7 @@ function createDom(localStorageData) {
   const doc = {
     readyState: "complete",
     _listeners: {},
+    documentElement: new El("html", "html"),
     getElementById(id) {
       if (!byId.has(id)) byId.set(id, new El(id));
       return byId.get(id);
@@ -444,18 +445,19 @@ function main() {
   el7("clearMarkBtn").dispatch("click");
   check(/标记题（0）/.test(el7("markedTab").textContent), "清空标记生效", el7("markedTab").textContent);
 
-  // 侧栏抽屉
-  check(body.classList.contains("drawer-open") === false, "抽屉默认收起");
+  // 侧栏抽屉（开合状态挂在 <html> 上，CSS 依赖 html.drawer-mode.drawer-open）
+  const uiRoot = dom6.doc.documentElement;
+  check(uiRoot.classList.contains("drawer-open") === false, "抽屉默认收起");
   el6("drawerBtn").dispatch("click");
-  check(body.classList.contains("drawer-open") === true, "点小按钮可呼出侧栏");
+  check(uiRoot.classList.contains("drawer-open") === true, "点小按钮可呼出侧栏（类加在 html 上）");
   el6("drawerBackdrop").dispatch("click");
-  check(body.classList.contains("drawer-open") === false, "点遮罩收起侧栏");
+  check(uiRoot.classList.contains("drawer-open") === false, "点遮罩收起侧栏");
   el6("drawerBtn").dispatch("click");
   el6("drawerCloseBtn").dispatch("click");
-  check(body.classList.contains("drawer-open") === false, "点关闭键收起侧栏");
+  check(uiRoot.classList.contains("drawer-open") === false, "点关闭键收起侧栏");
   el6("drawerBtn").dispatch("click");
   el6("startQuizBtn").click();
-  check(body.classList.contains("drawer-open") === false, "开始出题后自动收起侧栏（不挤压题目）");
+  check(uiRoot.classList.contains("drawer-open") === false, "开始出题后自动收起侧栏（不挤压题目）");
 
   console.log("10) 错题库/标记题的答案显示（标绿 + 侧栏开关）");
   dom6.radioState.quizScope = "all";
@@ -524,7 +526,7 @@ function main() {
   check(dom6.win.YXA_LAYOUT.pref() === "drawer", "再点切回抽屉", dom6.win.YXA_LAYOUT.pref());
   check(root.classList.contains("drawer-mode"), "切回后 html 上是抽屉形态");
   check(/切换为并排显示/.test(el6("modeToggleBtn").textContent), "按钮文案随模式变化", el6("modeToggleBtn").textContent);
-  check(/^v1\.5/.test(el6("layoutStatus").textContent), "状态行带版本号 v1.5", el6("layoutStatus").textContent);
+  check(/^v1\.6/.test(el6("layoutStatus").textContent), "状态行带版本号 v1.6", el6("layoutStatus").textContent);
 
   console.log("");
   if (failures.length) {
