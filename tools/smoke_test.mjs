@@ -394,15 +394,23 @@ function main() {
   check(markedIds.length === 30, "30 道题每题都有标记按钮", String(markedIds.length));
   check(/class="q-side"/.test(arts6) && /☆ 标记/.test(arts6), "标记按钮位于题型标签下方");
 
+  // 事件委托：按选择器精确返回，模拟真实 DOM 的 closest 行为
+  const clickMarkBtn = (id) => el6("content").dispatch("click", {
+    target: { closest: (sel) => (sel === "[data-mark-qid]" ? { dataset: { markQid: id } } : null) }
+  });
+  const clickShowAnsBtn = () => el6("content").dispatch("click", {
+    target: { closest: (sel) => (sel === '[data-action="toggle-answers"]' ? { dataset: {} } : null) }
+  });
+
   // 标记 3 道题
-  el6("content").dispatch("click", { target: { closest: () => ({ dataset: { markQid: markedIds[0] } }) } });
-  el6("content").dispatch("click", { target: { closest: () => ({ dataset: { markQid: markedIds[1] } }) } });
-  el6("content").dispatch("click", { target: { closest: () => ({ dataset: { markQid: markedIds[2] } }) } });
+  clickMarkBtn(markedIds[0]);
+  clickMarkBtn(markedIds[1]);
+  clickMarkBtn(markedIds[2]);
   check(/标记题（3）/.test(el6("markedTab").textContent), "标记 3 道后页签计数为 3", el6("markedTab").textContent);
   check(/标记试题（3）/.test(el6("scopeChoices").innerHTML), "练习模式计数同步为 3");
 
   // 再点一次取消第 3 道
-  el6("content").dispatch("click", { target: { closest: () => ({ dataset: { markQid: markedIds[2] } }) } });
+  clickMarkBtn(markedIds[2]);
   check(/标记题（2）/.test(el6("markedTab").textContent), "再次点击可取消标记", el6("markedTab").textContent);
 
   el6("markedTab").dispatch("click");
@@ -412,7 +420,7 @@ function main() {
   check(/标记题：2 题/.test(el6("paperSummary").textContent), "摘要显示标记题数量", el6("paperSummary").textContent);
 
   // 在标记题页签内取消一条
-  el6("content").dispatch("click", { target: { closest: () => ({ dataset: { markQid: markedIds[0] } }) } });
+  clickMarkBtn(markedIds[0]);
   check(/标记题（1）/.test(el6("markedTab").textContent), "在标记题列表内可直接取消", el6("markedTab").textContent);
 
   // 用「标记试题」范围出题
@@ -445,6 +453,45 @@ function main() {
   el6("drawerBtn").dispatch("click");
   el6("startQuizBtn").click();
   check(body.classList.contains("drawer-open") === false, "开始出题后自动收起侧栏（不挤压题目）");
+
+  console.log("10) 错题库/标记题的答案显示（标绿 + 侧栏开关）");
+  dom6.radioState.quizScope = "all";
+  dom6.radioState.quizType = "all";
+  dom6.radioState.quizCount = "custom";
+  el6("customCount").value = "3";
+  el6("startQuizBtn").click();
+  const wrongPaper = [...new Set([...el6("content").innerHTML.matchAll(/data-id="([^"]+)"/g)].map((m) => m[1]))];
+  check(wrongPaper.length === 3, "重新出 3 题", String(wrongPaper.length));
+  answerPaper(dom6, wfBank, wrongPaper, 0);   // 3 题全答错
+  el6("submitBtn").click();
+  check(/错题库（3）/.test(el6("wrongTab").textContent), "产生 3 道错题", el6("wrongTab").textContent);
+
+  el6("wrongTab").dispatch("click");
+  let listHtml = el6("content").innerHTML;
+  check(!/correct-highlight/.test(listHtml), "默认不显示答案：选项无绿色标记");
+  check(!/正确答案：/.test(listHtml), "默认不显示答案：无正确答案文本");
+  check(/list-hint/.test(listHtml) && /data-action="toggle-answers"/.test(listHtml), "默认显示「点这里显示」提示");
+  check(/答案已隐藏/.test(el6("paperSummary").textContent), "摘要标明答案已隐藏", el6("paperSummary").textContent);
+
+  clickShowAnsBtn();
+  check(el6("showAnswerToggle").checked === true, "点提示里的按钮即打开显示答案");  listHtml = el6("content").innerHTML;
+  check(/correct-highlight/.test(listHtml), "显示答案后正确选项标绿");
+  check(/正确答案：/.test(listHtml), "显示答案后出现正确答案文本");
+  check(/result show answer/.test(listHtml), "答案区样式与答题页一致");
+
+  el6("showAnswerToggle").checked = false;
+  el6("showAnswerToggle").dispatch("change");
+  listHtml = el6("content").innerHTML;
+  check(!/correct-highlight/.test(listHtml), "侧栏开关可以再隐藏答案");
+  check(!/正确答案：/.test(listHtml), "隐藏时不残留答案文本");
+
+  // 标记题列表同样受该开关控制
+  el6("showAnswerToggle").checked = true;
+  el6("showAnswerToggle").dispatch("change");
+  el6("markedTab").dispatch("click");
+  const markedHtml2 = el6("content").innerHTML;
+  check(/correct-highlight/.test(markedHtml2), "标记题列表也标绿正确选项");
+  check(/result show answer/.test(markedHtml2), "标记题列表显示正确答案");
 
   console.log("");
   if (failures.length) {

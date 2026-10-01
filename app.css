@@ -409,6 +409,32 @@
     }
     .unmark-btn:hover { background: #fff3dd; border-color: var(--warn); }
 
+    /* 错题库 / 标记题：答案隐藏时的提示条与内联「显示答案」链接按钮 */
+    .list-hint {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .link-btn {
+      min-height: 0;
+      padding: 0;
+      margin: 0 2px;
+      background: none;
+      border: 0;
+      border-radius: 0;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .link-btn:hover { background: none; color: var(--accent-strong); }
+
     /* ===== 平板抽屉：小按钮呼出整个侧栏，不挤压题目 ===== */
     .drawer-btn, .drawer-close, .drawer-backdrop { display: none; }
 

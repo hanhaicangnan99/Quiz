@@ -611,13 +611,25 @@
     return "正确答案：" + esc(q.answer) + (q.explanation ? "<br>解析：" + esc(q.explanation) : "");
   }
 
-  /* 只读列表：错题库 / 标记题共用（列出题干、选项、正确答案，并可标记/取消标记） */
+  /* 列表里只读的选项（无勾选框）：与答题页保持同一套「正确选项标绿」规则 */
+  function listOptionsHtml(q, highlight) {
+    var isJudge = /判断/.test(q.type);
+    var opts = isJudge ? [{ key: "A", text: "是" }, { key: "B", text: "否" }] : (q.options || []);
+    if (!opts.length) return "";
+    return '<div class="options">' + opts.map(function (o) {
+      return '<div class="option' + (highlight && isCorrectKey(o.key, q.answer, q.type) ? " correct-highlight" : "") +
+        '"><span></span><span><b>' + esc(o.key) + ".</b> " + esc(o.text) + "</span></div>";
+    }).join("") + "</div>";
+  }
+
+  /* 只读列表：错题库 / 标记题共用（题干、选项、答案；答案是否显示由侧栏「显示答案」控制） */
   function renderList(questions, mode) {
     els.submitBtn.disabled = true;
     els.submitBtnMobile.disabled = true;
     els.scoreBox.classList.remove("show");
     var isMarkedList = mode === "marked";
-    var title = (isMarkedList ? "标记题" : "错题库") + "：" + questions.length + " 题";
+    var showAns = !!state.showAnswers;
+    var title = (isMarkedList ? "标记题" : "错题库") + "：" + questions.length + " 题" + (showAns ? "" : "（答案已隐藏）");
     els.paperSummary.textContent = title;
     els.paperSummaryMobile.textContent = title;
     if (!questions.length) {
@@ -630,18 +642,18 @@
       return;
     }
     els.content.innerHTML = questions.map(function (q, idx) {
-      var o = (q.options && q.options.length)
-        ? '<div class="options">' + q.options.map(function (opt) {
-          return '<div class="option"><span></span><span><b>' + esc(opt.key) + ".</b> " + esc(opt.text) + "</span></div>";
-        }).join("") + "</div>"
-        : "";
       var markButton = isMarkedList
         ? '<button type="button" class="unmark-btn" data-mark-qid="' + escA(q.id) + '">取消标记</button>'
         : "";
+      var answerPart = showAns
+        ? '<div class="result show answer">正确答案：' + esc(q.answer) +
+          (q.explanation ? "<br>解析：" + esc(q.explanation) : "") + "</div>"
+        : '<div class="list-hint">正确答案与解析已隐藏　' +
+          '<button type="button" class="link-btn" data-action="toggle-answers">点这里显示</button>' +
+          "（也可用侧栏的「显示答案」开关）</div>";
       return '<article class="question' + (isMarked(q) ? " marked" : "") + '" data-id="' + escA(q.id) + '">' +
-        qHeadHtml(q, (idx + 1) + ". " + esc(q.question)) + o +
-        '<div class="result show bad">正确答案：' + esc(q.answer) +
-        (q.explanation ? "<br>解析：" + esc(q.explanation) : "") + "</div>" + markButton + "</article>";
+        qHeadHtml(q, (idx + 1) + ". " + esc(q.question)) +
+        listOptionsHtml(q, showAns) + answerPart + markButton + "</article>";
     }).join("");
   }
 
@@ -788,6 +800,8 @@
     state.showAnswers = els.showAnswerToggle.checked;
     saveSettings();
     if (state.mode === "quiz" && state.paper.length) renderPaper();
+    else if (state.mode === "wrong") renderWrongList();
+    else if (state.mode === "marked") renderMarkedList();
   }
 
   function switchTab(t) {
@@ -1125,9 +1139,20 @@
     els.content.addEventListener("change", capAnswer);
     els.content.addEventListener("input", capAnswer);
 
-    /* 题卡上的「☆ 标记 / ★ 已标记 / 取消标记」按钮（事件委托） */
+    /* 题卡上的「☆ 标记 / ★ 已标记 / 取消标记」按钮、列表里的「点这里显示」答案按钮（事件委托） */
     els.content.addEventListener("click", function (e) {
-      var btn = e.target && e.target.closest ? e.target.closest("[data-mark-qid]") : null;
+      var target = e.target;
+      if (!target || !target.closest) return;
+
+      var ansBtn = target.closest('[data-action="toggle-answers"]');
+      if (ansBtn) {
+        e.preventDefault();
+        els.showAnswerToggle.checked = true;
+        toggleAns();
+        return;
+      }
+
+      var btn = target.closest("[data-mark-qid]");
       if (!btn) return;
       e.preventDefault();
       toggleMark(btn.dataset.markQid);
