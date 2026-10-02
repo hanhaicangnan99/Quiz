@@ -17,7 +17,7 @@
   var KEY_LAST = "lastBank";
   var KEY_IMPORTED = "importedBanks";
   var GROUP_IMPORTED = "导入题库";
-  var APP_VERSION = "1.9";
+  var APP_VERSION = "2.0";
 
   var TYPE_ORDER = ["单选题", "多选题", "判断题", "填空题", "简答题", "计算题", "论述题"];
 
@@ -235,7 +235,8 @@
     scoreBox: E("scoreBox"), content: E("content"),
     submitBtn: E("submitBtn"), submitBtnMobile: E("submitBtnMobile"),
     paperSummaryMobile: E("paperSummaryMobile"),
-    importFile: E("importFile"), fileDrop: E("fileDrop"), importResult: E("importResult")
+    importFile: E("importFile"), fileDrop: E("fileDrop"), importResult: E("importResult"),
+    syncCode: E("syncCode"), syncResult: E("syncResult"), progressFile: E("progressFile")
   };
 
   /* ============================================================ 出题范围 */
@@ -1003,6 +1004,216 @@
     if (opts && opts.scrollTop) window.scrollTo(0, 0);
   }
 
+  /* ============================================================ 进度同步（同步码 / 进度文件）
+
+     记录只存在本机 localStorage，多设备共享靠「把记录搬过去」：
+       - 同步码：JSON → gzip → base64，最坏情况也只有 ~4.5KB，微信发一条消息即可
+       - 进度文件：同一份 JSON 存成文件传输
+     导入按「取并集」合并（错 > 对 > 未做，标记取并集），不会丢记录；也可选覆盖导入。 */
+
+  var SYNC_PREFIX = "YXA1-";
+
+  function bytesToBase64(bytes) {
+    var s = "";
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return window.btoa(s);
+  }
+
+  function base64ToBytes(b64) {
+    var s = window.atob(b64);
+    var out = new Uint8Array(s.length);
+    for (var i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+    return out;
+  }
+
+  function snapshotBankIds(id) {
+    var saved = lsGet(bankKey(id, "ids"), null) || {};
+    return { c: saved.c || [], w: saved.w || [], u: saved.u || [], m: saved.m || [] };
+  }
+
+  function buildProgressPayload() {
+    if (state) persistIds(state);            // 当前题库的最新状态先落盘
+    var banksOut = {};
+    Object.keys(BANKS).forEach(function (id) { banksOut[id] = snapshotBankIds(id); });
+    return {
+      v: 1, app: "yxa", at: new Date().toISOString(),
+      device: String((window.navigator && window.navigator.userAgent) || "").slice(0, 100),
+      banks: banksOut
+    };
+  }
+
+  function syncSummary(payload) {
+    var nBank = 0, nC = 0, nW = 0, nM = 0;
+    Object.keys((payload && payload.banks) || {}).forEach(function (id) {
+      if (!BANKS[id]) return;
+      var b = payload.banks[id] || {};
+      nBank++;
+      nC += (b.c || []).length;
+      nW += (b.w || []).length;
+      nM += (b.m || []).length;
+    });
+    return nBank + " 个题库（正确 " + nC + " / 错误 " + nW + " / 标记 " + nM + "）";
+  }
+
+  function mergeIds(local, incoming) {
+    var flag = {};
+    function mark(list, kind) {
+      (list || []).forEach(function (id) { flag[id] = flag[id] || {}; flag[id][kind] = 1; });
+    }
+    mark(local.c, "c"); mark(local.w, "w"); mark(local.u, "u");
+    mark(incoming.c, "c"); mark(incoming.w, "w"); mark(incoming.u, "u");
+    var out = { c: [], w: [], u: [], m: [] };
+    Object.keys(flag).forEach(function (id) {
+      if (flag[id].w) out.w.push(id);        // 错 > 对 > 未做
+      else if (flag[id].c) out.c.push(id);
+      else out.u.push(id);
+    });
+    var seen = {};
+    (local.m || []).concat(incoming.m || []).forEach(function (id) {
+      if (!seen[id]) { seen[id] = 1; out.m.push(id); }
+    });
+    return out;
+  }
+
+  function applyProgressPayload(payload, mode) {
+    if (!payload || payload.app !== "yxa" || !payload.banks) throw new Error("同步内容无法识别");
+    var applied = 0, skipped = 0;
+    Object.keys(payload.banks).forEach(function (id) {
+      if (!BANKS[id]) { skipped++; return; }
+      var incoming = payload.banks[id] || {};
+      var merged = mode === "replace"
+        ? { c: incoming.c || [], w: incoming.w || [], u: incoming.u || [], m: incoming.m || [] }
+        : mergeIds(snapshotBankIds(id), incoming);
+      lsSet(bankKey(id, "ids"), merged);
+      delete runtime[id];
+      applied++;
+    });
+    if (state) {
+      var cur = state.bankId;
+      delete runtime[cur];
+      state = null;
+      activate(cur);
+    }
+    return { applied: applied, skipped: skipped };
+  }
+
+  function codeFromPayload(payload) {
+    var bytes = new TextEncoder().encode(JSON.stringify(payload));
+    if (typeof window.CompressionStream !== "function") {
+      return Promise.resolve(SYNC_PREFIX + "raw" + bytesToBase64(bytes));   // 老浏览器降级：不压缩
+    }
+    var stream = new Blob([bytes]).stream().pipeThrough(new window.CompressionStream("gzip"));
+    return new Response(stream).arrayBuffer().then(function (buf) {
+      return SYNC_PREFIX + "gz-" + bytesToBase64(new Uint8Array(buf));
+    });
+  }
+
+  function payloadFromCode(code) {
+    var text = String(code || "").replace(/\s+/g, "");
+    var pos = text.indexOf(SYNC_PREFIX);
+    if (pos < 0) return Promise.reject(new Error("这不是本 App 的同步码（开头应为 " + SYNC_PREFIX + "）"));
+    var body = text.slice(pos + SYNC_PREFIX.length);
+    var kind = body.slice(0, 3).toLowerCase();     // "gz-"（压缩）或 "raw"（老浏览器降级）
+    var base64 = body.slice(3);
+    var bytes = base64ToBytes(base64);
+    if (kind === "raw") return Promise.resolve(JSON.parse(new TextDecoder().decode(bytes)));
+    if (kind !== "gz-") return Promise.reject(new Error("同步码格式不认识"));
+    if (typeof window.DecompressionStream !== "function") {
+      return Promise.reject(new Error("这台设备的浏览器不支持解压同步码，请改用「进度文件」方式"));
+    }
+    var stream = new Blob([bytes]).stream().pipeThrough(new window.DecompressionStream("gzip"));
+    return new Response(stream).text().then(function (t) { return JSON.parse(t); });
+  }
+
+  var syncNotice = "";
+
+  function setSyncResult(text, ok) {
+    syncNotice = text;
+    if (!els.syncResult) return;
+    els.syncResult.textContent = text;
+    els.syncResult.style.color = ok ? "var(--ok)" : "var(--bad)";
+  }
+
+  function copySyncCode() {
+    var text = els.syncCode.value;
+    if (!text) { setSyncResult("还没有同步码，先点「生成同步码」。", false); return Promise.resolve(false); }
+    function done(ok) {
+      setSyncResult(syncNotice + (ok ? " 已复制到剪贴板。" : " 复制失败：请长按上面的文本框手动全选复制。"), ok);
+      return ok;
+    }
+    var clip = window.navigator && window.navigator.clipboard;
+    if (clip && clip.writeText) {
+      return clip.writeText(text).then(function () { return done(true); }, function () { return done(false); });
+    }
+    try {
+      els.syncCode.select();
+      var ok = !!(document.execCommand && document.execCommand("copy"));
+      return Promise.resolve(done(ok));
+    } catch (e) {
+      return Promise.resolve(done(false));
+    }
+  }
+
+  function generateSyncCode() {
+    setSyncResult("正在生成…", true);
+    var payload = buildProgressPayload();
+    codeFromPayload(payload).then(function (code) {
+      els.syncCode.value = code;
+      setSyncResult("已生成 " + code.length + " 字符，涵盖 " + syncSummary(payload) + "。", true);
+      return copySyncCode();
+    }).catch(function (e) {
+      setSyncResult("生成失败：" + (e && e.message ? e.message : e), false);
+    });
+  }
+
+  function importSyncCode(mode) {
+    var code = els.syncCode.value;
+    if (!code) { setSyncResult("请先把同步码粘到上面的文本框里。", false); return; }
+    payloadFromCode(code).then(function (payload) {
+      var ask = "即将从同步码导入 " + syncSummary(payload) +
+        (mode === "replace" ? "，并覆盖本机这些题库的记录。继续？" : "，与本机记录合并（不会删除已有记录）。继续？");
+      if (!window.confirm(ask)) { setSyncResult("已取消导入。", true); return; }
+      var r = applyProgressPayload(payload, mode);
+      setSyncResult((mode === "replace" ? "已覆盖导入 " : "已合并导入 ") + r.applied + " 个题库" +
+        (r.skipped ? "，跳过本机没有的 " + r.skipped + " 个" : "") + "。", true);
+    }).catch(function (e) {
+      setSyncResult("导入失败：" + (e && e.message ? e.message : e), false);
+    });
+  }
+
+  function exportProgressFile() {
+    var payload = buildProgressPayload();
+    var blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var d = new Date();
+    function pad(n) { return (n < 10 ? "0" : "") + n; }
+    a.href = url;
+    a.download = "乙烯答题进度-" + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) +
+      "-" + pad(d.getHours()) + pad(d.getMinutes()) + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    setSyncResult("已导出进度文件（" + syncSummary(payload) + "）。", true);
+  }
+
+  function importProgressFile(file) {
+    var reader = new FileReader();
+    reader.onerror = function () { setSyncResult("读取文件失败。", false); };
+    reader.onload = function (e) {
+      try {
+        var payload = JSON.parse(e.target.result);
+        if (!window.confirm("即将从文件导入 " + syncSummary(payload) + "，与本机记录合并。继续？")) return;
+        var r = applyProgressPayload(payload, "merge");
+        setSyncResult("已合并导入 " + r.applied + " 个题库" + (r.skipped ? "，跳过 " + r.skipped + " 个" : "") + "。", true);
+      } catch (err) {
+        setSyncResult("导入失败：" + (err && err.message ? err.message : err), false);
+      }
+    };
+    reader.readAsText(file, "utf-8");
+  }
+
   /* ============================================================ 导入导出 */
 
   function slug(s) {
@@ -1218,6 +1429,22 @@
     els.clearWrongBtn.addEventListener("click", clearWrong);
     els.clearMarkBtn.addEventListener("click", clearMarks);
     E("resetAllBtn").addEventListener("click", resetAll);
+
+    /* 进度同步（同步码 / 进度文件） */
+    var genCodeBtn = E("genCodeBtn"), copyCodeBtn = E("copyCodeBtn");
+    var mergeImportBtn = E("mergeImportBtn"), replaceImportBtn = E("replaceImportBtn");
+    if (genCodeBtn) genCodeBtn.addEventListener("click", generateSyncCode);
+    if (copyCodeBtn) copyCodeBtn.addEventListener("click", function () { copySyncCode(); });
+    if (mergeImportBtn) mergeImportBtn.addEventListener("click", function () { importSyncCode("merge"); });
+    if (replaceImportBtn) replaceImportBtn.addEventListener("click", function () { importSyncCode("replace"); });
+    var exportProgressBtn = E("exportProgressBtn");
+    if (exportProgressBtn) exportProgressBtn.addEventListener("click", exportProgressFile);
+    var importProgressBtn = E("importProgressBtn");
+    if (importProgressBtn) importProgressBtn.addEventListener("click", function () { els.progressFile.click(); });
+    if (els.progressFile) els.progressFile.addEventListener("change", function () {
+      if (els.progressFile.files.length) importProgressFile(els.progressFile.files[0]);
+      els.progressFile.value = "";
+    });
 
     var importFile = els.importFile;
     var fileDrop = els.fileDrop;

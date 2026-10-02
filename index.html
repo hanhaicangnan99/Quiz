@@ -10,11 +10,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <!-- 版本号：改样式/脚本时同步改这里和 sw.js 里的 ?v=，避免浏览器拿到旧缓存 -->
-  <link rel="stylesheet" href="app.css?v=1.9">
-  <link rel="manifest" href="manifest.webmanifest?v=1.9">
+  <link rel="stylesheet" href="app.css?v=2.0">
+  <link rel="manifest" href="manifest.webmanifest?v=2.0">
   <link rel="icon" href="icons/icon128.png">
   <link rel="apple-touch-icon" href="icons/icon192.png">
-  <script src="layout.js?v=1.9"></script>
+  <script src="layout.js?v=2.0"></script>
 </head>
 <body>
   <div class="mobile-submit-bar">
@@ -118,6 +118,28 @@
       </div>
 
       <div class="import-section">
+        <details id="syncDetails">
+          <summary>同步到另一台设备</summary>
+          <div class="hint">答题记录只存在本机浏览器里，不会自动上云。用下面任一方式把它搬到另一台手机 / 电脑：</div>
+          <button id="genCodeBtn" class="secondary" type="button" style="width:100%;">① 生成同步码（并自动复制）</button>
+          <textarea id="syncCode" class="sync-code" rows="3" spellcheck="false"
+            placeholder="点上面生成；或把另一台发来的同步码粘到这里"></textarea>
+          <div class="actions">
+            <button id="copyCodeBtn" class="secondary" type="button">② 复制同步码</button>
+            <button id="mergeImportBtn" class="secondary" type="button">③ 粘贴并合并导入</button>
+            <button id="replaceImportBtn" class="danger" type="button">粘贴并覆盖导入</button>
+          </div>
+          <div id="syncResult"></div>
+          <div class="hint" style="margin-top:12px;">也可以存成文件来传（微信「文件传输助手」等）：</div>
+          <div class="actions">
+            <button id="exportProgressBtn" class="secondary" type="button">导出进度文件</button>
+            <button id="importProgressBtn" class="secondary" type="button">选择进度文件导入</button>
+          </div>
+          <input id="progressFile" type="file" accept=".json,.txt">
+        </details>
+      </div>
+
+      <div class="import-section">
         <details id="importDetails">
           <summary>导入 / 导出题库</summary>
           <div class="hint">点击或拖入 xlsx / xls / csv 文件，解析后作为<strong>新的题库</strong>加入上面的列表；也可把当前题库导出为 JSON 备份。导入的题库不影响内置题库。</div>
@@ -161,7 +183,7 @@
   <script src="banks/rd-gj.js"></script>
   <script src="banks/rd-js.js"></script>
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="app.js?v=1.9"></script>
-  <script src="pwa.js?v=1.9"></script>
+  <script src="app.js?v=2.0"></script>
+  <script src="pwa.js?v=2.0"></script>
 </body>
 </html>

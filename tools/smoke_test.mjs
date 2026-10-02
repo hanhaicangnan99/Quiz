@@ -12,6 +12,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.dirname(HERE);
 
 const failures = [];
+const tick = () => new Promise((r) => setImmediate(r));   // 等待异步的同步码生成/解析
 function check(cond, label, extra) {
   if (cond) { console.log(`  ok  ${label}`); return true; }
   failures.push(label + (extra ? ` → ${extra}` : ""));
@@ -133,6 +134,9 @@ function createDom(localStorageData) {
     confirm: () => true,
     scrollTo() {},
     setTimeout: (fn) => { fn(); return 0; },
+    btoa: (s) => Buffer.from(String(s), "binary").toString("base64"),
+    atob: (b) => Buffer.from(String(b), "base64").toString("binary"),
+    navigator: { userAgent: "smoke-test" },
     _listeners: {},
     addEventListener(type, fn) { (win._listeners[type] = win._listeners[type] || []).push(fn); },
     _fire(type, ev) { (win._listeners[type] || []).forEach((fn) => fn(ev || {})); }
@@ -242,7 +246,7 @@ function answerPaper(dom, bank, paperIds, rightCount) {
   });
 }
 
-function main() {
+async function main() {
   console.log("1) 首次启动");
   let dom = createDom(new Map());
   bootApp(dom, scripts);
@@ -564,7 +568,79 @@ function main() {
   check(dom6.win.YXA_LAYOUT.pref() === "drawer", "再点切回抽屉", dom6.win.YXA_LAYOUT.pref());
   check(root.classList.contains("drawer-mode"), "切回后 html 上是抽屉形态");
   check(/切换为并排显示/.test(el6("modeToggleBtn").textContent), "按钮文案随模式变化", el6("modeToggleBtn").textContent);
-  check(/^v1\.9/.test(el6("layoutStatus").textContent), "状态行带版本号 v1.9", el6("layoutStatus").textContent);
+  check(/^v2\.0/.test(el6("layoutStatus").textContent), "状态行带版本号 v2.0", el6("layoutStatus").textContent);
+
+  console.log("12) 多设备同步：同步码往返与并集合并");
+  const dom9 = createDom(new Map());          // 全新设备 A
+  bootAppWithImport(dom9);
+  const el9 = (id) => dom9.doc.getElementById(id);
+  const clickMark9 = () => {
+    const m = /data-mark-qid="([^"]+)"/.exec(el9("content").innerHTML);
+    if (m) {
+      dom9.doc.getElementById("content").dispatch("click", {
+        target: { closest: (sel) => (sel === "[data-mark-qid]" ? { dataset: { markQid: m[1] } } : null) }
+      });
+    }
+  };
+  dom9.radioState.quizScope = "all";
+  dom9.radioState.quizType = "all";
+  dom9.radioState.quizCount = "custom";
+  el9("customCount").value = "5";
+  el9("startQuizBtn").click();
+  const ids9 = [...new Set([...el9("content").innerHTML.matchAll(/data-id="([^"]+)"/g)].map((m) => m[1]))];
+  check(ids9.length === 5, "出 5 题准备同步", String(ids9.length));
+  answerPaper(dom9, wfBank, ids9, 3);              // 前 3 对、后 2 错
+  el9("submitBtn").click();
+  clickMark9();
+  check(el9("correctCount").textContent === 3 && el9("wrongCount").textContent === 2, "同步前：3 对 2 错",
+    `${el9("correctCount").textContent}/${el9("wrongCount").textContent}`);
+  check(/标记题（1）/.test(el9("markedTab").textContent), "同步前：1 道标记", el9("markedTab").textContent);
+
+  el9("genCodeBtn").dispatch("click");
+  await tick();
+  const code = el9("syncCode").value;
+  check(/^YXA1-/.test(code), "同步码带 YXA1- 前缀", String(code).slice(0, 14));
+  check(code.length > 100, `同步码非空（${code.length} 字符）`);
+  check(/已生成 \d+ 字符/.test(el9("syncResult").textContent), "生成后给出提示", el9("syncResult").textContent);
+
+  // 模拟「另一台手机」：全新存储 + 全新页面
+  const dom10 = createDom(new Map());
+  bootAppWithImport(dom10);
+  const el10 = (id) => dom10.doc.getElementById(id);
+  check(el10("correctCount").textContent === 0, "另一台设备初始为空");
+  el10("syncCode").value = code;
+  el10("mergeImportBtn").dispatch("click");
+  await tick();
+  check(el10("correctCount").textContent === 3, "★ 另一台导入后拿到 3 道正确", String(el10("correctCount").textContent));
+  check(el10("wrongCount").textContent === 2, "★ 另一台导入后拿到 2 道错题", String(el10("wrongCount").textContent));
+  check(/标记题（1）/.test(el10("markedTab").textContent), "★ 标记也同步过去了", el10("markedTab").textContent);
+  check(/已合并导入 5 个题库/.test(el10("syncResult").textContent), "导入结果提示完整", el10("syncResult").textContent);
+
+  // 反向同步：另一台新增记录后把码发回来 → 取并集，谁的都不丢
+  dom10.radioState.quizScope = "all";
+  dom10.radioState.quizType = "all";
+  dom10.radioState.quizCount = "custom";
+  el10("customCount").value = "4";
+  el10("startQuizBtn").click();
+  const ids10 = [...new Set([...el10("content").innerHTML.matchAll(/data-id="([^"]+)"/g)].map((m) => m[1]))];
+  answerPaper(dom10, wfBank, ids10, 4);            // 4 题全对
+  el10("submitBtn").click();
+  const theirCorrect = Number(el10("correctCount").textContent);
+  el10("genCodeBtn").dispatch("click");
+  await tick();
+  el9("syncCode").value = el10("syncCode").value;
+  el9("mergeImportBtn").dispatch("click");
+  await tick();
+  check(Number(el9("correctCount").textContent) >= 3, "★ 并集合并：本机正确数不减少",
+    String(el9("correctCount").textContent));
+  check(Number(el9("correctCount").textContent) >= theirCorrect - 1, "★ 并集合并：对方的记录也进来了",
+    `${el9("correctCount").textContent} vs ${theirCorrect}`);
+  check(el9("wrongCount").textContent === 2, "★ 并集合并：本机原有 2 道错题仍在", String(el9("wrongCount").textContent));
+
+  el9("syncCode").value = "随便一段文字";
+  el9("mergeImportBtn").dispatch("click");
+  await tick();
+  check(/不是本 App 的同步码/.test(el9("syncResult").textContent), "★ 粘错内容会明确报错", el9("syncResult").textContent);
 
   console.log("");
   if (failures.length) {
@@ -576,4 +652,4 @@ function main() {
   return 0;
 }
 
-process.exit(main());
+main().then((code) => process.exit(code));

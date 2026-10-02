@@ -1,4 +1,4 @@
-﻿/* 真实浏览器回归测试：在 Chrome 里加载 index.html（注入临时探针），
+/* 真实浏览器回归测试：在 Chrome 里加载 index.html（注入临时探针），
    用「计算后的样式」验证那些 DOM 桩测不出来的东西：
    - 抽屉按钮点开后侧栏是否真的滑出来了（transform）、遮罩是否真的出现
    - 抽屉/并排两种形态下 aside 的定位、题目是否满屏
@@ -170,10 +170,39 @@ window.addEventListener("load", function () {
     log.push("navWidth=" + Math.round(document.querySelector("#questionNavList").getBoundingClientRect().width));
     log.push("contentW=" + Math.round(q("content").getBoundingClientRect().width));
     log.push("statusLine=" + q("layoutStatus").textContent);
+
+    // —— 同步码：真实 gzip 压缩 → 解压导入（异步，故放到最后） ——
+    window.confirm = function () { return true; };   // headless 里 confirm 默认返回 false
+    q("genCodeBtn").click();
+    setTimeout(function () {
+      try {
+        var code = q("syncCode").value;
+        log.push("syncCodeKind=" + String(code).slice(0, 8));
+        log.push("syncCodeLen=" + code.length);
+        log.push("syncNotice=" + String(q("syncResult").textContent).slice(0, 12));
+        log.push("correctBefore=" + q("correctCount").textContent);
+        q("mergeImportBtn").click();
+        setTimeout(function () {
+          try {
+            log.push("mergeNotice=" + String(q("syncResult").textContent).slice(0, 14));
+            log.push("correctAfter=" + q("correctCount").textContent);
+            log.push("markedAfter=" + q("markedTab").textContent);
+          } catch (e2) { err = "SYNC-ERROR:" + (e2 && e2.message ? e2.message : e2); }
+          finish();
+        }, 400);
+      } catch (e1) {
+        err = "SYNC-ERROR:" + (e1 && e1.message ? e1.message : e1);
+        finish();
+      }
+    }, 600);
   } catch (e) {
     err = "PROBE-ERROR:" + (e && e.message ? e.message : e);
+    finish();
   }
-  document.title = "BTEST|" + log.join("|") + (err ? "|" + err : "");
+
+  function finish() {
+    document.title = "BTEST|" + log.join("|") + (err ? "|" + err : "");
+  }
 });
 `;
 
@@ -261,6 +290,16 @@ if (narrow[0] === "NO-TITLE") {
   check(Math.abs(Number(value(narrow, "anchorShift"))) <= 3,
     "★ 切换显示答案时，当前题目纹丝不动（锚点位移 ≤3px）", `shift=${value(narrow, "anchorShift")}px`);
   check(value(narrow, "paperHasGreen") === "true", "切换后答案确实标绿了", value(narrow, "paperHasGreen"));
+  check(/^YXA1-gz-/.test(value(narrow, "syncCodeKind")),
+    "★ 同步码用真实 gzip 压缩（不是降级路径）", value(narrow, "syncCodeKind"));
+  check(Number(value(narrow, "syncCodeLen")) > 100 && Number(value(narrow, "syncCodeLen")) < 12000,
+    "★ 同步码长度合理（几千字符）", value(narrow, "syncCodeLen"));
+  check(/已生成/.test(value(narrow, "syncNotice")), "生成后给出提示", value(narrow, "syncNotice"));
+  check(/已合并导入/.test(value(narrow, "mergeNotice")), "★ 解压导入成功", value(narrow, "mergeNotice"));
+  check(value(narrow, "correctAfter") === value(narrow, "correctBefore"),
+    "★ 导入自己的记录是幂等的（取并集，数字不变）",
+    `${value(narrow, "correctBefore")} → ${value(narrow, "correctAfter")}`);
+  check(/标记题（1）/.test(value(narrow, "markedAfter")), "★ 导入后标记数量正确", value(narrow, "markedAfter"));
   check(Number(value(narrow, "paperW")) > Number(value(narrow, "asideW")) * 2,
     "题目区宽度不受侧栏挤压", `paper=${value(narrow, "paperW")} aside=${value(narrow, "asideW")}`);
 
@@ -271,7 +310,7 @@ if (narrow[0] === "NO-TITLE") {
   check(Number(value(narrow, "navMarked")) === 1, "题号导航出现 ★", value(narrow, "navMarked"));
   check(/标记题（1）/.test(value(narrow, "tabText")), "标记题页签计数更新", value(narrow, "tabText"));
   check(Number(value(narrow, "navWidth")) > 100, "抽屉里题目导航可见且有宽度", value(narrow, "navWidth"));
-  check(/^v1\.9/.test(value(narrow, "statusLine")), "状态行显示 v1.9", value(narrow, "statusLine"));
+  check(/^v2\.0/.test(value(narrow, "statusLine")), "状态行显示 v2.0", value(narrow, "statusLine"));
   check(!/PROBE-ERROR/.test(narrow.join("|")), "探针无异常", narrow.filter((l) => /ERROR/.test(l)).join(" "));
 }
 

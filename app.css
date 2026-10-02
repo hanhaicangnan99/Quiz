@@ -412,6 +412,24 @@
     /* 错题库 / 标记题：答案隐藏时不再有任何提示条，答案显示由侧栏开关
        或抽屉形态下浮动的「显示答案」按钮控制 */
 
+    /* 进度同步：同步码文本框与结果提示 */
+    .sync-code {
+      width: 100%;
+      margin-top: 10px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfe;
+      color: var(--ink);
+      font-family: Consolas, Menlo, monospace;
+      font-size: 11px;
+      line-height: 1.45;
+      resize: vertical;
+      word-break: break-all;
+    }
+    #syncResult { font-size: 12px; line-height: 1.5; margin-top: 8px; min-height: 18px; overflow-wrap: anywhere; }
+    #progressFile { display: none; }
+
     /* 解析：默认折叠的小胶囊，不占版面；点开才展开 */
     .explain { margin-top: 10px; }
     .explain > summary {
