@@ -580,7 +580,7 @@ async function main() {
   check(dom6.win.YXA_LAYOUT.pref() === "drawer", "再点切回抽屉", dom6.win.YXA_LAYOUT.pref());
   check(root.classList.contains("drawer-mode"), "切回后 html 上是抽屉形态");
   check(/切换为并排显示/.test(el6("modeToggleBtn").textContent), "按钮文案随模式变化", el6("modeToggleBtn").textContent);
-  check(/^v2\.2/.test(el6("layoutStatus").textContent), "状态行带版本号 v2.2", el6("layoutStatus").textContent);
+  check(/^v2\.3/.test(el6("layoutStatus").textContent), "状态行带版本号 v2.3", el6("layoutStatus").textContent);
 
   console.log("12) 多设备同步：同步码往返与并集合并");
   const dom9 = createDom(new Map());          // 全新设备 A
@@ -666,11 +666,18 @@ async function main() {
   elA("startQuizBtn").click();
   const paperA = [...new Set([...elA("content").innerHTML.matchAll(/data-id="([^"]+)"/g)].map((m) => m[1]))];
   check(paperA.indexOf("0001") >= 0, "顺序出题的卷子里包含题号 0001");
-  check(/我的解析/.test(elA("content").innerHTML) && /A 设备的解析/.test(elA("content").innerHTML),
-    "★ 我写的解析显示在题卡上");
-  check(/✎ 我的解析/.test(elA("content").innerHTML), "有解析时按钮变成「✎ 我的解析」");
+  check(!/A 设备的解析/.test(elA("content").innerHTML),
+    "★ 不勾「显示答案」时，我写的解析也藏起来（自己的笔记同样会透题）");
+  check(/✎ 我的解析/.test(elA("content").innerHTML), "按钮仍标出「✎ 我的解析」，知道写过");
+  elA("showAnswerToggle").checked = true;
+  elA("showAnswerToggle").dispatch("change");
+  check(/A 设备的解析/.test(elA("content").innerHTML), "★ 勾上后我的解析显示出来（与内置解析同一个开关）");
+  check(/✎ 我的解析/.test(elA("content").innerHTML), "有解析时按钮是「✎ 我的解析」");
   check(/✎ 解析/.test(elA("content").innerHTML), "没写解析的题仍显示「✎ 解析」");
   check(/class="note-wrap"/.test(elA("content").innerHTML), "每道题都带我写的解析区域");
+  elA("showAnswerToggle").checked = false;
+  elA("showAnswerToggle").dispatch("change");
+  check(!/A 设备的解析/.test(elA("content").innerHTML), "★ 再取消勾选，我的解析又隐藏");
 
   elA("genCodeBtn").dispatch("click");
   await tick();

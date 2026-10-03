@@ -17,7 +17,7 @@
   var KEY_LAST = "lastBank";
   var KEY_IMPORTED = "importedBanks";
   var GROUP_IMPORTED = "导入题库";
-  var APP_VERSION = "2.2";
+  var APP_VERSION = "2.3";
 
   var TYPE_ORDER = ["单选题", "多选题", "判断题", "填空题", "简答题", "计算题", "论述题"];
 
@@ -150,6 +150,12 @@
   function noteTextOf(q) {
     var n = state && state.notes[q.id];
     return n && n.t ? n.t : "";
+  }
+
+  /* 我写的解析和内置解析看同一个开关：不勾「显示答案」时也一起藏起来（自己的笔记同样会透题）。
+     想改就直接点「✎ 我的解析」——打开编辑框属于主动查看，此时仍显示原内容方便修改。 */
+  function noteVisible() {
+    return !!(state && state.showAnswers);
   }
 
   function rebuildMarkedSet(st) {
@@ -613,9 +619,12 @@
 
   function noteBtnHtml(q) {
     var has = !!noteTextOf(q);
+    var hidden = has && !noteVisible();
+    var title = has
+      ? (hidden ? "我的解析已保存；勾选「显示答案」时显示，点这里可修改" : "修改我写的解析")
+      : "添加自己的解析 / 记忆要点";
     return '<button type="button" class="note-btn' + (has ? " on" : "") + '" data-note-edit="' + escA(q.id) +
-      '" title="' + (has ? "修改我写的解析" : "添加自己的解析 / 记忆要点") + '">' +
-      (has ? "✎ 我的解析" : "✎ 解析") + "</button>";
+      '" title="' + esc(title) + '">' + (has ? "✎ 我的解析" : "✎ 解析") + "</button>";
   }
 
   /* 题卡头部：题干 + 右侧竖排的「题型标签 / 标记 + 写解析」 */
@@ -626,12 +635,14 @@
       '<div class="q-side-row">' + markBtnHtml(q) + noteBtnHtml(q) + "</div></div></div>";
   }
 
-  /* 我写的解析：正文 + 编辑框（编辑状态放在 state.editingNote 里） */
+  /* 我写的解析：正文 + 编辑框（编辑状态放在 state.editingNote 里）
+     正文跟随「显示答案」开关（不勾就藏起来，避免自己的笔记也透题）；
+     打开编辑框属于主动查看，此时仍显示原内容方便修改。 */
   function noteInnerHtml(q) {
     var text = noteTextOf(q);
     var editing = state.editingNote === q.id;
     var html = "";
-    if (text) {
+    if (text && (noteVisible() || editing)) {
       html += '<div class="note-body"><b>我的解析</b>：' +
         esc(text).replace(/\n/g, "<br>") + "</div>";
     }

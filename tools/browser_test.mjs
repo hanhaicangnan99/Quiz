@@ -213,9 +213,15 @@ window.addEventListener("load", function () {
       var bankNow = "wf";
       try { bankNow = JSON.parse(localStorage.getItem("yxa:v1:lastBank")) || "wf"; } catch (e) {}
       log.push("noteInStorage=" + ((JSON.parse(localStorage.getItem("yxa:v1:bank:" + bankNow + ":notes") || "{}")[noteId] || {}).t ? "yes" : "no"));
-      // 切一次「显示答案」，确认重新渲染后我写的解析还在
+      // 关掉「显示答案」→ 我写的解析也应该跟着藏起来（用户报的场景）
       var tgl = q("showAnswerToggle");
-      tgl.checked = !tgl.checked;
+      tgl.checked = false;
+      tgl.dispatchEvent(new Event("change", { bubbles: true }));
+      var bodyHidden = document.querySelector('[data-note-wrap="' + noteId + '"] .note-body');
+      log.push("noteHiddenWhenAnswersOff=" + (bodyHidden ? "no" : "yes"));
+      log.push("noteBtnStillShows=" + document.querySelector('[data-note-edit="' + noteId + '"]').textContent);
+      // 再打开 → 又回来（重绘后仍在）
+      tgl.checked = true;
       tgl.dispatchEvent(new Event("change", { bubbles: true }));
       var body2 = document.querySelector('[data-note-wrap="' + noteId + '"] .note-body');
       log.push("noteSurvivesRerender=" + (body2 && /我自己写的解析/.test(body2.textContent) ? "yes" : "no"));
@@ -361,7 +367,11 @@ if (narrow[0] === "NO-TITLE") {
   check(/我自己写的解析/.test(value(narrow, "noteSavedText")), "★ 保存后题卡上出现我写的解析", value(narrow, "noteSavedText"));
   check(value(narrow, "noteBtnAfter") === "✎ 我的解析", "按钮变为「✎ 我的解析」", value(narrow, "noteBtnAfter"));
   check(value(narrow, "noteInStorage") === "yes", "★ 我写的解析已落盘", value(narrow, "noteInStorage"));
-  check(value(narrow, "noteSurvivesRerender") === "yes", "★ 切换显示答案重绘后我写的解析仍在", value(narrow, "noteSurvivesRerender"));
+  check(value(narrow, "noteHiddenWhenAnswersOff") === "yes",
+    "★ 关掉「显示答案」后，我写的解析也一起隐藏（用户报的场景）", value(narrow, "noteHiddenWhenAnswersOff"));
+  check(value(narrow, "noteBtnStillShows") === "✎ 我的解析",
+    "隐藏时按钮仍标出「✎ 我的解析」，提示写过", value(narrow, "noteBtnStillShows"));
+  check(value(narrow, "noteSurvivesRerender") === "yes", "★ 再打开后又显示出来，重绘后仍在", value(narrow, "noteSurvivesRerender"));
   check(Number(value(narrow, "paperW")) > Number(value(narrow, "asideW")) * 2,
     "题目区宽度不受侧栏挤压", `paper=${value(narrow, "paperW")} aside=${value(narrow, "asideW")}`);
 
@@ -372,7 +382,7 @@ if (narrow[0] === "NO-TITLE") {
   check(Number(value(narrow, "navMarked")) === 1, "题号导航出现 ★", value(narrow, "navMarked"));
   check(/标记题（1）/.test(value(narrow, "tabText")), "标记题页签计数更新", value(narrow, "tabText"));
   check(Number(value(narrow, "navWidth")) > 100, "抽屉里题目导航可见且有宽度", value(narrow, "navWidth"));
-  check(/^v2\.2/.test(value(narrow, "statusLine")), "状态行显示 v2.2", value(narrow, "statusLine"));
+  check(/^v2\.3/.test(value(narrow, "statusLine")), "状态行显示 v2.3", value(narrow, "statusLine"));
   check(!/PROBE-ERROR/.test(narrow.join("|")), "探针无异常", narrow.filter((l) => /ERROR/.test(l)).join(" "));
 }
 

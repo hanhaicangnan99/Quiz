@@ -6,11 +6,11 @@ const CACHE = "yxa-v8";
 
 const PRECACHE = [
   "./index.html",
-  "./app.css?v=2.2",
-  "./app.js?v=2.2",
-  "./pwa.js?v=2.2",
-  "./layout.js?v=2.2",
-  "./manifest.webmanifest?v=2.2",
+  "./app.css?v=2.3",
+  "./app.js?v=2.3",
+  "./pwa.js?v=2.3",
+  "./layout.js?v=2.3",
+  "./manifest.webmanifest?v=2.3",
   "./icons/icon16.png",
   "./icons/icon48.png",
   "./icons/icon128.png",

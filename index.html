@@ -10,11 +10,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <!-- 版本号：改样式/脚本时同步改这里和 sw.js 里的 ?v=，避免浏览器拿到旧缓存 -->
-  <link rel="stylesheet" href="app.css?v=2.2">
-  <link rel="manifest" href="manifest.webmanifest?v=2.2">
+  <link rel="stylesheet" href="app.css?v=2.3">
+  <link rel="manifest" href="manifest.webmanifest?v=2.3">
   <link rel="icon" href="icons/icon128.png">
   <link rel="apple-touch-icon" href="icons/icon192.png">
-  <script src="layout.js?v=2.2"></script>
+  <script src="layout.js?v=2.3"></script>
 </head>
 <body>
   <div class="mobile-submit-bar">
@@ -108,7 +108,7 @@
             <input id="showAnswerToggle" type="checkbox">
             <span>显示答案（正确选项标绿）</span>
           </label>
-          <div class="hint" style="margin-top:6px;">解析跟着这个开关走：<strong>勾上</strong>＝正确选项标绿并显示解析；<strong>不勾</strong>＝答案与解析全部隐藏，做题时不会透题。判分结果里会直接给答案与解析。</div>
+          <div class="hint" style="margin-top:6px;">解析跟着这个开关走：<strong>勾上</strong>＝正确选项标绿，并显示内置解析和你写的「我的解析」；<strong>不勾</strong>＝这些全部隐藏，做题时不会透题（想改自己的解析，直接点「✎ 我的解析」）。判分结果里会直接给答案与解析。</div>
           <div class="actions">
             <button id="startQuizBtn" type="button">开始出题</button>
             <button id="clearWrongBtn" class="danger" type="button">清空错题库</button>
@@ -185,7 +185,7 @@
   <script src="banks/rd-gj.js"></script>
   <script src="banks/rd-js.js"></script>
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="app.js?v=2.2"></script>
-  <script src="pwa.js?v=2.2"></script>
+  <script src="app.js?v=2.3"></script>
+  <script src="pwa.js?v=2.3"></script>
 </body>
 </html>
