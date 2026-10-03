@@ -139,6 +139,15 @@ window.addEventListener("load", function () {
       firstSummary.click();
     }
 
+    // 关掉「显示答案」：解析与绿色答案都应消失（做题不透题）；再打开应全部回来
+    q("showAnswerToggle").checked = false;
+    q("showAnswerToggle").dispatchEvent(new Event("change", { bubbles: true }));
+    log.push("offExplain=" + document.querySelectorAll("#content .explain").length);
+    log.push("offGreen=" + document.querySelectorAll("#content .option.correct-highlight").length);
+    q("showAnswerToggle").checked = true;
+    q("showAnswerToggle").dispatchEvent(new Event("change", { bubbles: true }));
+    log.push("onExplainBack=" + document.querySelectorAll("#content .explain").length);
+
     // 把最后一道带解析的题滚到视口顶部，然后关掉「显示答案」，看它是否还在原位
     // （关闭时上面 7 道题的解析胶囊会消失，不补偿的话它会上移约 260px）
     var explainCards = document.querySelectorAll("#content article.question");
@@ -160,6 +169,22 @@ window.addEventListener("load", function () {
       q("showAnswerToggle").dispatchEvent(new Event("change", { bubbles: true }));
       log.push("paperHasGreen=" + (document.querySelectorAll("#content .option.correct-highlight").length > 0));
     }
+
+    // 判分之后：结果框保留「正确答案 + 解析」，再切换显示答案也不会丢、更不会出现两份
+    q("submitBtn").click();
+    q("showAnswerToggle").checked = false;
+    q("showAnswerToggle").dispatchEvent(new Event("change", { bubbles: true }));
+    q("showAnswerToggle").checked = true;
+    q("showAnswerToggle").dispatchEvent(new Event("change", { bubbles: true }));
+    var resBox = document.querySelector("#content .result.show");
+    log.push("resultKept=" + (resBox && /正确答案/.test(resBox.textContent) ? "yes" : "no"));
+    var allCards = document.querySelectorAll("#content article.question");
+    var firstExplained = null;
+    for (var xi = 0; xi < allCards.length; xi++) {
+      if (allCards[xi].querySelector(".explain")) { firstExplained = allCards[xi]; break; }
+    }
+    log.push("submitExplainCount=" + document.querySelectorAll("#content .explain").length);
+    log.push("explainPerCard=" + (firstExplained ? firstExplained.querySelectorAll(".explain").length : -1));
     var markBtn = document.querySelector("#content [data-mark-qid]");
     markBtn.click();
     log.push("markBtnText=" + markBtn.textContent);
@@ -315,6 +340,12 @@ if (narrow[0] === "NO-TITLE") {
   check(Math.abs(Number(value(narrow, "anchorShift"))) <= 3,
     "★ 切换显示答案时，当前题目纹丝不动（锚点位移 ≤3px）", `shift=${value(narrow, "anchorShift")}px`);
   check(value(narrow, "paperHasGreen") === "true", "切换后答案确实标绿了", value(narrow, "paperHasGreen"));
+  check(Number(value(narrow, "offExplain")) === 0, "★ 关掉「显示答案」后解析一个都不剩（不会透题）", value(narrow, "offExplain"));
+  check(Number(value(narrow, "offGreen")) === 0, "★ 关掉后正确选项也不再标绿", value(narrow, "offGreen"));
+  check(Number(value(narrow, "onExplainBack")) === 8, "★ 再打开解析又全部回来（与答案绑定）", value(narrow, "onExplainBack"));
+  check(value(narrow, "resultKept") === "yes", "★ 判分后再切换显示答案，判分结果不丢", value(narrow, "resultKept"));
+  check(Number(value(narrow, "submitExplainCount")) === 8, "判分后解析仍在（在结果框里）", value(narrow, "submitExplainCount"));
+  check(Number(value(narrow, "explainPerCard")) === 1, "★ 每道题只出现一份解析，不重复", value(narrow, "explainPerCard"));
   check(/^YXA1-gz-/.test(value(narrow, "syncCodeKind")),
     "★ 同步码用真实 gzip 压缩（不是降级路径）", value(narrow, "syncCodeKind"));  check(Number(value(narrow, "syncCodeLen")) > 100 && Number(value(narrow, "syncCodeLen")) < 12000,
     "★ 同步码长度合理（几千字符）", value(narrow, "syncCodeLen"));
@@ -341,7 +372,7 @@ if (narrow[0] === "NO-TITLE") {
   check(Number(value(narrow, "navMarked")) === 1, "题号导航出现 ★", value(narrow, "navMarked"));
   check(/标记题（1）/.test(value(narrow, "tabText")), "标记题页签计数更新", value(narrow, "tabText"));
   check(Number(value(narrow, "navWidth")) > 100, "抽屉里题目导航可见且有宽度", value(narrow, "navWidth"));
-  check(/^v2\.1/.test(value(narrow, "statusLine")), "状态行显示 v2.1", value(narrow, "statusLine"));
+  check(/^v2\.2/.test(value(narrow, "statusLine")), "状态行显示 v2.2", value(narrow, "statusLine"));
   check(!/PROBE-ERROR/.test(narrow.join("|")), "探针无异常", narrow.filter((l) => /ERROR/.test(l)).join(" "));
 }
 

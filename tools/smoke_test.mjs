@@ -528,8 +528,20 @@ async function main() {
     { id: "0001", type: "单选题", answer: "B", options: [{ key: "A", text: "甲" }] },
     { id: "0002", type: "简答题", answer: "参考答案文本", options: [] }
   ] };
+  const beforeSubmitHtml = el8("content").innerHTML;
+  check(/correct-highlight/.test(beforeSubmitHtml), "未提交时「显示答案」会标绿正确选项");
+  check(/details class="explain"/.test(beforeSubmitHtml), "★ 未提交时「显示答案」也会给出解析（与答案绑定）");
+  el8("showAnswerToggle").checked = false;
+  el8("showAnswerToggle").dispatch("change");
+  const hiddenHtml = el8("content").innerHTML;
+  check(!/correct-highlight/.test(hiddenHtml), "关掉开关后选项不再标绿");
+  check(!/details class="explain"/.test(hiddenHtml), "★ 关掉开关后解析也一起隐藏（防透题）");
+  check(!/这里是解析内容。/.test(hiddenHtml), "★ 解析正文完全不出现");
+  el8("showAnswerToggle").checked = true;
+  el8("showAnswerToggle").dispatch("change");
   answerPaper(dom8, fakeBank, ["0001", "0002"], 0);   // 两道都答错
   el8("submitBtn").click();
+  check(/details class="explain"/.test(el8("content").innerHTML), "提交判分后结果里也带解析");
   check(/错题库（2）/.test(el8("wrongTab").textContent), "两道题进入错题库", el8("wrongTab").textContent);
   el8("wrongTab").dispatch("click");
   const expHtml = el8("content").innerHTML;
@@ -568,7 +580,7 @@ async function main() {
   check(dom6.win.YXA_LAYOUT.pref() === "drawer", "再点切回抽屉", dom6.win.YXA_LAYOUT.pref());
   check(root.classList.contains("drawer-mode"), "切回后 html 上是抽屉形态");
   check(/切换为并排显示/.test(el6("modeToggleBtn").textContent), "按钮文案随模式变化", el6("modeToggleBtn").textContent);
-  check(/^v2\.1/.test(el6("layoutStatus").textContent), "状态行带版本号 v2.1", el6("layoutStatus").textContent);
+  check(/^v2\.2/.test(el6("layoutStatus").textContent), "状态行带版本号 v2.2", el6("layoutStatus").textContent);
 
   console.log("12) 多设备同步：同步码往返与并集合并");
   const dom9 = createDom(new Map());          // 全新设备 A

@@ -17,7 +17,7 @@
   var KEY_LAST = "lastBank";
   var KEY_IMPORTED = "importedBanks";
   var GROUP_IMPORTED = "导入题库";
-  var APP_VERSION = "2.1";
+  var APP_VERSION = "2.2";
 
   var TYPE_ORDER = ["单选题", "多选题", "判断题", "填空题", "简答题", "计算题", "论述题"];
 
@@ -721,18 +721,30 @@
       }).join("") + "</div>"
       : '<input class="answer-text" data-qid="' + escA(q.id) + '" type="text" placeholder="请输入答案" value="' +
         escA(state.answers[q.id] || "") + '">';
+    // 判分过的卷子：把结果原样画出来（重绘后不丢），解析也在这里出现
+    var resultClass = "result";
+    var resultHtml = "";
+    if (state.submitted) {
+      var given = nAnswer(state.answers[q.id] || "");
+      var answeredAlready = given.length > 0;
+      var okAlready = answeredAlready && isCorrect(given, q.answer, q.type);
+      resultClass += " show " + (okAlready ? "ok" : "bad");
+      resultHtml = rText(answeredAlready, okAlready, given) + "<br>" + ansHtml(q) + explanationHtml(q);
+    }
     return '<article class="question' + (isMarked(q) ? " marked" : "") + '" data-id="' + escA(q.id) + '">' +
       qHeadHtml(q, (idx + 1) + ". " + esc(q.question)) + body +
       noteWrapHtml(q) +
-      (showAns ? explanationHtml(q) : "") +
-      '<div class="result" id="result_' + escA(q.id) + '"></div></article>';
+      (showAns && !state.submitted ? explanationHtml(q) : "") +
+      '<div class="' + resultClass + '" id="result_' + escA(q.id) + '">' + resultHtml + "</div></article>";
   }
 
   function ansHtml(q) {
     return "正确答案：" + esc(q.answer);
   }
 
-  /* 解析默认折叠：不占版面，点开才展开，避免把下面的题目挤走 */
+  /* 内置解析与「答案显示」绑在一起：
+     - 答题页：勾了「显示答案」就一起出现（不勾则答案、解析全隐藏，做题不会透题）
+     - 提交判分后：结果显示框里直接给答案 + 解析（都已判分，不再重复一份） */
   function explanationHtml(q) {
     if (!q.explanation) return "";
     return '<details class="explain"><summary>解析</summary><div class="explain-body">' +
