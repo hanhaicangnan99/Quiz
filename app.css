@@ -383,6 +383,57 @@
 
     .question.marked { border-color: #e0b878; box-shadow: 0 0 0 2px rgba(160, 98, 18, .14), var(--shadow); }
 
+    /* 我的解析：按钮、正文、编辑框 */
+    .q-side-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+    .note-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 30px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      background: #fff;
+      border: 1px solid #b9cfda;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .note-btn:hover { background: var(--soft); border-color: var(--accent); }
+    .note-btn.on { color: var(--accent-strong); background: var(--soft); border-color: var(--accent); }
+
+    .note-body {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #fffaf0;
+      border: 1px solid #e8c9a0;
+      color: #6b4a12;
+      font-size: 14px;
+      line-height: 1.6;
+      overflow-wrap: anywhere;
+    }
+    .note-body b { color: var(--warn); }
+
+    .note-editor { margin-top: 10px; }
+    .note-input {
+      width: 100%;
+      min-height: 78px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      font-size: 14px;
+      line-height: 1.6;
+      resize: vertical;
+    }
+    .note-input:focus { outline: 2px solid rgba(20, 108, 148, .22); border-color: var(--accent); }
+    .note-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .note-actions button { min-height: 34px; padding: 4px 16px; font-size: 13px; }
+
     .q-nav-item { position: relative; }
     .q-nav-item.marked::after {
       content: "★";

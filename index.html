@@ -10,11 +10,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <!-- 版本号：改样式/脚本时同步改这里和 sw.js 里的 ?v=，避免浏览器拿到旧缓存 -->
-  <link rel="stylesheet" href="app.css?v=2.0">
-  <link rel="manifest" href="manifest.webmanifest?v=2.0">
+  <link rel="stylesheet" href="app.css?v=2.1">
+  <link rel="manifest" href="manifest.webmanifest?v=2.1">
   <link rel="icon" href="icons/icon128.png">
   <link rel="apple-touch-icon" href="icons/icon192.png">
-  <script src="layout.js?v=2.0"></script>
+  <script src="layout.js?v=2.1"></script>
 </head>
 <body>
   <div class="mobile-submit-bar">
@@ -112,6 +112,7 @@
             <button id="startQuizBtn" type="button">开始出题</button>
             <button id="clearWrongBtn" class="danger" type="button">清空错题库</button>
             <button id="clearMarkBtn" class="danger" type="button">清空标记</button>
+            <button id="clearNoteBtn" class="danger" type="button">清空我的解析</button>
             <button id="resetAllBtn" class="danger" type="button">全部重置(变未做)</button>
           </div>
         </section>
@@ -183,7 +184,7 @@
   <script src="banks/rd-gj.js"></script>
   <script src="banks/rd-js.js"></script>
   <script src="vendor/xlsx.full.min.js"></script>
-  <script src="app.js?v=2.0"></script>
-  <script src="pwa.js?v=2.0"></script>
+  <script src="app.js?v=2.1"></script>
+  <script src="pwa.js?v=2.1"></script>
 </body>
 </html>

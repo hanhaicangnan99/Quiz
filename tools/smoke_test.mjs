@@ -568,7 +568,7 @@ async function main() {
   check(dom6.win.YXA_LAYOUT.pref() === "drawer", "再点切回抽屉", dom6.win.YXA_LAYOUT.pref());
   check(root.classList.contains("drawer-mode"), "切回后 html 上是抽屉形态");
   check(/切换为并排显示/.test(el6("modeToggleBtn").textContent), "按钮文案随模式变化", el6("modeToggleBtn").textContent);
-  check(/^v2\.0/.test(el6("layoutStatus").textContent), "状态行带版本号 v2.0", el6("layoutStatus").textContent);
+  check(/^v2\.1/.test(el6("layoutStatus").textContent), "状态行带版本号 v2.1", el6("layoutStatus").textContent);
 
   console.log("12) 多设备同步：同步码往返与并集合并");
   const dom9 = createDom(new Map());          // 全新设备 A
@@ -641,6 +641,61 @@ async function main() {
   el9("mergeImportBtn").dispatch("click");
   await tick();
   check(/不是本 App 的同步码/.test(el9("syncResult").textContent), "★ 粘错内容会明确报错", el9("syncResult").textContent);
+
+  console.log("13) 自己写解析（我的解析）：渲染 / 同步 / 新旧合并");
+  const storeA = new Map();
+  storeA.set("yxa:v1:bank:wf:notes", JSON.stringify({ "0001": { t: "A 设备的解析", u: 1000 } }));
+  const domA = createDom(storeA);
+  bootAppWithImport(domA);
+  const elA = (id) => domA.doc.getElementById(id);
+  domA.radioState.quizScope = "all";
+  domA.radioState.quizType = "all";
+  domA.radioState.quizCount = "30";
+  elA("startQuizBtn").click();
+  const paperA = [...new Set([...elA("content").innerHTML.matchAll(/data-id="([^"]+)"/g)].map((m) => m[1]))];
+  check(paperA.indexOf("0001") >= 0, "顺序出题的卷子里包含题号 0001");
+  check(/我的解析/.test(elA("content").innerHTML) && /A 设备的解析/.test(elA("content").innerHTML),
+    "★ 我写的解析显示在题卡上");
+  check(/✎ 我的解析/.test(elA("content").innerHTML), "有解析时按钮变成「✎ 我的解析」");
+  check(/✎ 解析/.test(elA("content").innerHTML), "没写解析的题仍显示「✎ 解析」");
+  check(/class="note-wrap"/.test(elA("content").innerHTML), "每道题都带我写的解析区域");
+
+  elA("genCodeBtn").dispatch("click");
+  await tick();
+  const codeA = elA("syncCode").value;
+  check(/我的解析 1/.test(elA("syncResult").textContent), "★ 同步码统计里包含我写的解析", elA("syncResult").textContent);
+
+  // 设备 B：同题已有一条更旧的解析
+  const storeB = new Map();
+  storeB.set("yxa:v1:bank:wf:notes", JSON.stringify({ "0001": { t: "B 设备的旧解析", u: 500 } }));
+  const domB = createDom(storeB);
+  bootAppWithImport(domB);
+  const elB = (id) => domB.doc.getElementById(id);
+  elB("syncCode").value = codeA;
+  elB("mergeImportBtn").dispatch("click");
+  await tick();
+  const notesB = JSON.parse(storeB.get("yxa:v1:bank:wf:notes") || "{}");
+  check(notesB["0001"] && notesB["0001"].t === "A 设备的解析",
+    "★ 较新的解析覆盖较旧的", JSON.stringify(notesB["0001"]));
+
+  // 手造一段「更旧」的同步码导入 A：A 的新解析不能被冲掉
+  const olderPayload = {
+    v: 1, app: "yxa", at: "2020-01-01T00:00:00Z",
+    banks: { wf: { c: [], w: [], u: [], m: [], n: { "0001": { t: "更旧的解析", u: 1 } } } }
+  };
+  const olderCode = "YXA1-raw" + Buffer.from(JSON.stringify(olderPayload), "utf8").toString("base64");
+  elA("syncCode").value = olderCode;
+  elA("mergeImportBtn").dispatch("click");
+  await tick();
+  const notesA = JSON.parse(storeA.get("yxa:v1:bank:wf:notes") || "{}");
+  check(notesA["0001"] && notesA["0001"].t === "A 设备的解析",
+    "★ 导入更旧的解析不会把新的冲掉", JSON.stringify(notesA["0001"]));
+  check(Object.keys(notesA).length === 1, "★ 合并后不会重复堆叠", JSON.stringify(Object.keys(notesA)));
+
+  // 清空我的解析
+  elA("clearNoteBtn").dispatch("click");
+  check(Object.keys(JSON.parse(storeA.get("yxa:v1:bank:wf:notes") || "{}")).length === 0,
+    "★ 「清空我的解析」清掉全部笔记", storeA.get("yxa:v1:bank:wf:notes"));
 
   console.log("");
   if (failures.length) {

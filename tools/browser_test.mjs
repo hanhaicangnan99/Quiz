@@ -171,6 +171,31 @@ window.addEventListener("load", function () {
     log.push("contentW=" + Math.round(q("content").getBoundingClientRect().width));
     log.push("statusLine=" + q("layoutStatus").textContent);
 
+    // —— 我写的解析：真实 DOM 里点按钮 → 输入 → 保存 ——
+    var noteCard = document.querySelector("#content article.question");
+    var noteId = noteCard.dataset.id;
+    var noteBtn = noteCard.querySelector("[data-note-edit]");
+    log.push("noteBtnText=" + (noteBtn ? noteBtn.textContent : "none"));
+    noteBtn.click();
+    var input = document.querySelector('[data-note-wrap="' + noteId + '"] .note-input');
+    log.push("noteEditorOpen=" + !!input);
+    if (input) {
+      input.value = "我自己写的解析：先看题干问的是“不是”，再排除。";
+      document.querySelector('[data-note-save="' + noteId + '"]').click();
+      var body = document.querySelector('[data-note-wrap="' + noteId + '"] .note-body');
+      log.push("noteSavedText=" + (body ? body.textContent.slice(0, 16) : "none"));
+      log.push("noteBtnAfter=" + document.querySelector('[data-note-edit="' + noteId + '"]').textContent);
+      var bankNow = "wf";
+      try { bankNow = JSON.parse(localStorage.getItem("yxa:v1:lastBank")) || "wf"; } catch (e) {}
+      log.push("noteInStorage=" + ((JSON.parse(localStorage.getItem("yxa:v1:bank:" + bankNow + ":notes") || "{}")[noteId] || {}).t ? "yes" : "no"));
+      // 切一次「显示答案」，确认重新渲染后我写的解析还在
+      var tgl = q("showAnswerToggle");
+      tgl.checked = !tgl.checked;
+      tgl.dispatchEvent(new Event("change", { bubbles: true }));
+      var body2 = document.querySelector('[data-note-wrap="' + noteId + '"] .note-body');
+      log.push("noteSurvivesRerender=" + (body2 && /我自己写的解析/.test(body2.textContent) ? "yes" : "no"));
+    }
+
     // —— 同步码：真实 gzip 压缩 → 解压导入（异步，故放到最后） ——
     window.confirm = function () { return true; };   // headless 里 confirm 默认返回 false
     q("genCodeBtn").click();
@@ -291,8 +316,7 @@ if (narrow[0] === "NO-TITLE") {
     "★ 切换显示答案时，当前题目纹丝不动（锚点位移 ≤3px）", `shift=${value(narrow, "anchorShift")}px`);
   check(value(narrow, "paperHasGreen") === "true", "切换后答案确实标绿了", value(narrow, "paperHasGreen"));
   check(/^YXA1-gz-/.test(value(narrow, "syncCodeKind")),
-    "★ 同步码用真实 gzip 压缩（不是降级路径）", value(narrow, "syncCodeKind"));
-  check(Number(value(narrow, "syncCodeLen")) > 100 && Number(value(narrow, "syncCodeLen")) < 12000,
+    "★ 同步码用真实 gzip 压缩（不是降级路径）", value(narrow, "syncCodeKind"));  check(Number(value(narrow, "syncCodeLen")) > 100 && Number(value(narrow, "syncCodeLen")) < 12000,
     "★ 同步码长度合理（几千字符）", value(narrow, "syncCodeLen"));
   check(/已生成/.test(value(narrow, "syncNotice")), "生成后给出提示", value(narrow, "syncNotice"));
   check(/已合并导入/.test(value(narrow, "mergeNotice")), "★ 解压导入成功", value(narrow, "mergeNotice"));
@@ -300,6 +324,13 @@ if (narrow[0] === "NO-TITLE") {
     "★ 导入自己的记录是幂等的（取并集，数字不变）",
     `${value(narrow, "correctBefore")} → ${value(narrow, "correctAfter")}`);
   check(/标记题（1）/.test(value(narrow, "markedAfter")), "★ 导入后标记数量正确", value(narrow, "markedAfter"));
+
+  check(value(narrow, "noteBtnText") === "✎ 解析", "题卡上有「✎ 解析」按钮", value(narrow, "noteBtnText"));
+  check(value(narrow, "noteEditorOpen") === "true", "★ 点按钮打开编辑框");
+  check(/我自己写的解析/.test(value(narrow, "noteSavedText")), "★ 保存后题卡上出现我写的解析", value(narrow, "noteSavedText"));
+  check(value(narrow, "noteBtnAfter") === "✎ 我的解析", "按钮变为「✎ 我的解析」", value(narrow, "noteBtnAfter"));
+  check(value(narrow, "noteInStorage") === "yes", "★ 我写的解析已落盘", value(narrow, "noteInStorage"));
+  check(value(narrow, "noteSurvivesRerender") === "yes", "★ 切换显示答案重绘后我写的解析仍在", value(narrow, "noteSurvivesRerender"));
   check(Number(value(narrow, "paperW")) > Number(value(narrow, "asideW")) * 2,
     "题目区宽度不受侧栏挤压", `paper=${value(narrow, "paperW")} aside=${value(narrow, "asideW")}`);
 
@@ -310,7 +341,7 @@ if (narrow[0] === "NO-TITLE") {
   check(Number(value(narrow, "navMarked")) === 1, "题号导航出现 ★", value(narrow, "navMarked"));
   check(/标记题（1）/.test(value(narrow, "tabText")), "标记题页签计数更新", value(narrow, "tabText"));
   check(Number(value(narrow, "navWidth")) > 100, "抽屉里题目导航可见且有宽度", value(narrow, "navWidth"));
-  check(/^v2\.0/.test(value(narrow, "statusLine")), "状态行显示 v2.0", value(narrow, "statusLine"));
+  check(/^v2\.1/.test(value(narrow, "statusLine")), "状态行显示 v2.1", value(narrow, "statusLine"));
   check(!/PROBE-ERROR/.test(narrow.join("|")), "探针无异常", narrow.filter((l) => /ERROR/.test(l)).join(" "));
 }
 

@@ -17,7 +17,7 @@
   var KEY_LAST = "lastBank";
   var KEY_IMPORTED = "importedBanks";
   var GROUP_IMPORTED = "导入题库";
-  var APP_VERSION = "2.0";
+  var APP_VERSION = "2.1";
 
   var TYPE_ORDER = ["单选题", "多选题", "判断题", "填空题", "简答题", "计算题", "论述题"];
 
@@ -108,6 +108,7 @@
       bankId: bank.id,
       bank: bank.questions,
       correct: [], wrong: [], undone: [], marked: [], markedSet: {},
+      notes: {}, editingNote: null,
       paper: [], answers: {},
       mode: "quiz", showAnswers: false, submitted: false,
       currentScope: "all", currentType: "all", currentSubject: "all", currentOrder: "sequential",
@@ -124,6 +125,31 @@
     lsSet(bankKey(st.bankId, "ids"), {
       c: idsOf(st.correct), w: idsOf(st.wrong), u: idsOf(st.undone), m: idsOf(st.marked)
     });
+  }
+
+  /* 我的解析（自己写的笔记）：{ 题号: { t: 文本, u: 更新时间戳 } } */
+  function loadNotes(st) {
+    var raw = lsGet(bankKey(st.bankId, "notes"), null) || {};
+    var out = {};
+    Object.keys(raw).forEach(function (qid) {
+      var v = raw[qid];
+      if (typeof v === "string") {
+        if (v) out[qid] = { t: v, u: 0 };                    // 兼容早期纯文本写法
+      } else if (v && typeof v.t === "string" && v.t) {
+        out[qid] = { t: v.t, u: Number(v.u) || 0 };
+      }
+    });
+    st.notes = out;
+  }
+
+  function persistNotes(st) {
+    if (!st || !st.loaded) return;
+    lsSet(bankKey(st.bankId, "notes"), st.notes || {});
+  }
+
+  function noteTextOf(q) {
+    var n = state && state.notes[q.id];
+    return n && n.t ? n.t : "";
   }
 
   function rebuildMarkedSet(st) {
@@ -148,6 +174,7 @@
       else st.undone.push(q);
     });
     rebuildMarkedSet(st);
+    loadNotes(st);
     st.loaded = true;
     persistIds(st);
   }
@@ -584,11 +611,100 @@
       '" title="' + (on ? "取消标记" : "标记这道题") + '">' + (on ? "★ 已标记" : "☆ 标记") + "</button>";
   }
 
-  /* 题卡头部：题干 + 右侧竖排的「题型标签 / 标记按钮」 */
+  function noteBtnHtml(q) {
+    var has = !!noteTextOf(q);
+    return '<button type="button" class="note-btn' + (has ? " on" : "") + '" data-note-edit="' + escA(q.id) +
+      '" title="' + (has ? "修改我写的解析" : "添加自己的解析 / 记忆要点") + '">' +
+      (has ? "✎ 我的解析" : "✎ 解析") + "</button>";
+  }
+
+  /* 题卡头部：题干 + 右侧竖排的「题型标签 / 标记 + 写解析」 */
   function qHeadHtml(q, titleHtml) {
     var meta = esc(q.type) + (q.subject ? " · " + esc(q.subject) : "");
     return '<div class="q-head"><div class="q-title">' + titleHtml + '</div><div class="q-side">' +
-      '<span class="badge">' + meta + "</span>" + markBtnHtml(q) + "</div></div>";
+      '<span class="badge">' + meta + "</span>" +
+      '<div class="q-side-row">' + markBtnHtml(q) + noteBtnHtml(q) + "</div></div></div>";
+  }
+
+  /* 我写的解析：正文 + 编辑框（编辑状态放在 state.editingNote 里） */
+  function noteInnerHtml(q) {
+    var text = noteTextOf(q);
+    var editing = state.editingNote === q.id;
+    var html = "";
+    if (text) {
+      html += '<div class="note-body"><b>我的解析</b>：' +
+        esc(text).replace(/\n/g, "<br>") + "</div>";
+    }
+    if (editing) {
+      html += '<div class="note-editor">' +
+        '<textarea class="note-input" rows="3" placeholder="写自己的解析、易错点、记忆口诀…">' + esc(text) + "</textarea>" +
+        '<div class="note-actions">' +
+        '<button type="button" class="note-save" data-note-save="' + escA(q.id) + '">保存</button>' +
+        '<button type="button" class="secondary" data-note-cancel="' + escA(q.id) + '">取消</button>' +
+        (text ? '<button type="button" class="danger" data-note-del="' + escA(q.id) + '">删除</button>' : "") +
+        "</div></div>";
+    }
+    return html;
+  }
+
+  function noteWrapHtml(q) {
+    return '<div class="note-wrap" data-note-wrap="' + escA(q.id) + '">' + noteInnerHtml(q) + "</div>";
+  }
+
+  function refreshNoteUi(qid) {
+    var wrap = els.content.querySelector('[data-note-wrap="' + cssEsc(qid) + '"]');
+    var q = findQuestion(qid);
+    if (!wrap || !q) return;
+    wrap.innerHTML = noteInnerHtml(q);
+    var btn = els.content.querySelector('[data-note-edit="' + cssEsc(qid) + '"]');
+    if (btn) {
+      var has = !!noteTextOf(q);
+      btn.className = "note-btn" + (has ? " on" : "");
+      btn.textContent = has ? "✎ 我的解析" : "✎ 解析";
+      btn.title = has ? "修改我写的解析" : "添加自己的解析 / 记忆要点";
+    }
+    var input = wrap.querySelector(".note-input");
+    if (input) { input.focus(); if (input.setSelectionRange) input.setSelectionRange(input.value.length, input.value.length); }
+  }
+
+  function editNote(qid) {
+    var q = findQuestion(qid);
+    if (!q) return;
+    state.editingNote = state.editingNote === qid ? null : qid;
+    refreshNoteUi(qid);
+  }
+
+  function saveNote(qid) {
+    var wrap = els.content.querySelector('[data-note-wrap="' + cssEsc(qid) + '"]');
+    var input = wrap ? wrap.querySelector(".note-input") : null;
+    if (!input) return;
+    var text = String(input.value || "").replace(/\r/g, "").trim();
+    if (text) state.notes[qid] = { t: text, u: Date.now() };
+    else delete state.notes[qid];
+    state.editingNote = null;
+    persistNotes(state);
+    refreshNoteUi(qid);
+  }
+
+  function deleteNote(qid) {
+    if (!state.notes[qid]) return;
+    if (!window.confirm("删除这道题我写的解析？")) return;
+    delete state.notes[qid];
+    state.editingNote = null;
+    persistNotes(state);
+    refreshNoteUi(qid);
+  }
+
+  function clearNotes() {
+    var n = Object.keys(state.notes || {}).length;
+    if (!n) return;
+    if (!window.confirm("确认清空当前题库里我写的 " + n + " 条解析？（内置题库的解析不受影响）")) return;
+    state.notes = {};
+    state.editingNote = null;
+    persistNotes(state);
+    if (state.mode === "quiz" && state.paper.length) renderPaper();
+    else if (state.mode === "wrong") renderWrongList();
+    else if (state.mode === "marked") renderMarkedList();
   }
 
   function renderQ(q, idx, showAns) {
@@ -607,6 +723,7 @@
         escA(state.answers[q.id] || "") + '">';
     return '<article class="question' + (isMarked(q) ? " marked" : "") + '" data-id="' + escA(q.id) + '">' +
       qHeadHtml(q, (idx + 1) + ". " + esc(q.question)) + body +
+      noteWrapHtml(q) +
       (showAns ? explanationHtml(q) : "") +
       '<div class="result" id="result_' + escA(q.id) + '"></div></article>';
   }
@@ -668,7 +785,7 @@
       }
       return '<article class="question' + (isMarked(q) ? " marked" : "") + '" data-id="' + escA(q.id) + '">' +
         qHeadHtml(q, (idx + 1) + ". " + esc(q.question)) +
-        optsHtml + answerPart + markButton + "</article>";
+        optsHtml + answerPart + noteWrapHtml(q) + markButton + "</article>";
     }).join("");
   }
 
@@ -1031,10 +1148,38 @@
     return { c: saved.c || [], w: saved.w || [], u: saved.u || [], m: saved.m || [] };
   }
 
+  function snapshotNotes(id) {
+    var raw = lsGet(bankKey(id, "notes"), null) || {};
+    var out = {};
+    Object.keys(raw).forEach(function (qid) {
+      var v = raw[qid];
+      if (typeof v === "string") { if (v) out[qid] = { t: v, u: 0 }; }
+      else if (v && v.t) out[qid] = { t: v.t, u: Number(v.u) || 0 };
+    });
+    return out;
+  }
+
+  /* 两台设备的同题解析：谁的更新时间新就用谁的（幂等，重复同步不会叠加） */
+  function mergeNotes(local, incoming) {
+    var out = {};
+    Object.keys(local || {}).forEach(function (qid) { out[qid] = local[qid]; });
+    Object.keys(incoming || {}).forEach(function (qid) {
+      var a = out[qid], b = incoming[qid];
+      if (!a) { out[qid] = b; return; }
+      if (!b) return;
+      if (b.t === a.t) return;
+      out[qid] = (Number(b.u) || 0) > (Number(a.u) || 0) ? b : a;
+    });
+    return out;
+  }
+
   function buildProgressPayload() {
-    if (state) persistIds(state);            // 当前题库的最新状态先落盘
+    if (state) { persistIds(state); persistNotes(state); }   // 当前题库的最新状态先落盘
     var banksOut = {};
-    Object.keys(BANKS).forEach(function (id) { banksOut[id] = snapshotBankIds(id); });
+    Object.keys(BANKS).forEach(function (id) {
+      banksOut[id] = snapshotBankIds(id);
+      banksOut[id].n = snapshotNotes(id);
+    });
     return {
       v: 1, app: "yxa", at: new Date().toISOString(),
       device: String((window.navigator && window.navigator.userAgent) || "").slice(0, 100),
@@ -1043,7 +1188,7 @@
   }
 
   function syncSummary(payload) {
-    var nBank = 0, nC = 0, nW = 0, nM = 0;
+    var nBank = 0, nC = 0, nW = 0, nM = 0, nN = 0;
     Object.keys((payload && payload.banks) || {}).forEach(function (id) {
       if (!BANKS[id]) return;
       var b = payload.banks[id] || {};
@@ -1051,8 +1196,9 @@
       nC += (b.c || []).length;
       nW += (b.w || []).length;
       nM += (b.m || []).length;
+      nN += Object.keys(b.n || {}).length;
     });
-    return nBank + " 个题库（正确 " + nC + " / 错误 " + nW + " / 标记 " + nM + "）";
+    return nBank + " 个题库（正确 " + nC + " / 错误 " + nW + " / 标记 " + nM + " / 我的解析 " + nN + "）";
   }
 
   function mergeIds(local, incoming) {
@@ -1085,6 +1231,10 @@
         ? { c: incoming.c || [], w: incoming.w || [], u: incoming.u || [], m: incoming.m || [] }
         : mergeIds(snapshotBankIds(id), incoming);
       lsSet(bankKey(id, "ids"), merged);
+      var mergedNotes = mode === "replace"
+        ? (incoming.n || {})
+        : mergeNotes(snapshotNotes(id), incoming.n || {});
+      lsSet(bankKey(id, "notes"), mergedNotes);
       delete runtime[id];
       applied++;
     });
@@ -1428,6 +1578,7 @@
     });
     els.clearWrongBtn.addEventListener("click", clearWrong);
     els.clearMarkBtn.addEventListener("click", clearMarks);
+    E("clearNoteBtn").addEventListener("click", clearNotes);
     E("resetAllBtn").addEventListener("click", resetAll);
 
     /* 进度同步（同步码 / 进度文件） */
@@ -1472,10 +1623,28 @@
     els.content.addEventListener("change", capAnswer);
     els.content.addEventListener("input", capAnswer);
 
-    /* 题卡上的「☆ 标记 / ★ 已标记 / 取消标记」按钮（事件委托） */
+    /* 题卡上的按钮：标记、写/改/存/删自己的解析（事件委托） */
     els.content.addEventListener("click", function (e) {
       var target = e.target;
       if (!target || !target.closest) return;
+
+      var noteEdit = target.closest("[data-note-edit]");
+      if (noteEdit) { e.preventDefault(); editNote(noteEdit.dataset.noteEdit); return; }
+
+      var noteSave = target.closest("[data-note-save]");
+      if (noteSave) { e.preventDefault(); saveNote(noteSave.dataset.noteSave); return; }
+
+      var noteCancel = target.closest("[data-note-cancel]");
+      if (noteCancel) {
+        e.preventDefault();
+        state.editingNote = null;
+        refreshNoteUi(noteCancel.dataset.noteCancel);
+        return;
+      }
+
+      var noteDel = target.closest("[data-note-del]");
+      if (noteDel) { e.preventDefault(); deleteNote(noteDel.dataset.noteDel); return; }
+
       var btn = target.closest("[data-mark-qid]");
       if (!btn) return;
       e.preventDefault();
